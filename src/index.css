@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+:root {
+  /* SURFACES */
+  --bg: #F1F1F3;
+  --surface: #FFFFFF;
+  --elevated: #F8F4EB;
+  --muted-bg: #E8E1CD;
+  --border: #E2E1E5;
+  --border-strong: #BCBBC2;
+
+  /* TEXT */
+  --ink: #141414;
+  --ink-dim: #3F3F3F;
+  --muted: #7A7468;
+  --faint: #A8A294;
+
+  /* SIGNAL */
+  --accent: #BC002D;
+  --accent-hi: #D91840;
+  --accent-soft: rgba(188, 0, 45, 0.08);
+  --accent-line: rgba(188, 0, 45, 0.28);
+  --pass: #0F8F47;
+  --pass-soft: rgba(15, 143, 71, 0.08);
+  --pass-line: rgba(15, 143, 71, 0.28);
+  --fail: #BC002D;
+  --kanji: #7C3AED;
+
+  /* TYPE */
+  --font-latin: 'Inter', system-ui, sans-serif;
+  --font-jp-display: 'Noto Serif JP', 'Noto Sans JP', serif;
+  --font-jp: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+  --font-heb: 'Noto Sans Hebrew', 'Noto Sans JP', sans-serif;
+  --font-num: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-latin);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  font-feature-settings: "ss01", "cv11";
+}
+
+button { font-family: inherit; color: inherit; }
+
+.jp { font-family: var(--font-jp); }
+.jp-display { font-family: var(--font-jp-display); letter-spacing: 0.05em; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 400; }
+.heb { font-family: var(--font-heb); direction: rtl; text-align: right; unicode-bidi: plaintext; }
+.kicker { font-family: var(--font-latin); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
