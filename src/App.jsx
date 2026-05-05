@@ -145,19 +145,18 @@ function pickMessage(key) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-// Path map: 5 distinct daruma assets cover the 7 mascot states via aliasing.
-// SVG preferred for sharpness; sad ships only as PNG.
+// Sensei mascot — full-body character art covering all 7 states.
 const MASCOT_ASSETS = {
-  idle:        "/mascot/daruma-idle.svg",
-  happy:       "/mascot/daruma-happy.svg",
-  cheering:    "/mascot/daruma-cheering.svg",
-  thinking:    "/mascot/daruma-thinking.svg",
-  sad:         "/mascot/daruma-sad-512.png",
-  encouraging: "/mascot/daruma-happy.svg",       // alias — warm pep-talk smile
-  celebrating: "/mascot/daruma-cheering.svg",    // alias — full joyful
+  idle:        "/sensei/sensei-peaceful.svg",
+  happy:       "/sensei/sensei-happy.svg",
+  cheering:    "/sensei/sensei-excited.svg",
+  thinking:    "/sensei/sensei-pointing.svg",
+  sad:         "/sensei/sensei-concerned.svg",
+  encouraging: "/sensei/sensei-thumbs.svg",
+  celebrating: "/sensei/sensei-excited.svg",
 };
 
-// Image-only daruma — used inside custom layouts where we want our own bubble/card design
+// Image-only sensei — used inside custom layouts where we want our own bubble/card design
 function DojoMascotBig({ state = "idle", size = 96 }) {
   const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊", sad: "🥺" };
   const assetSrc = MASCOT_ASSETS[state] || MASCOT_ASSETS.idle;
@@ -177,7 +176,7 @@ function DojoMascotBig({ state = "idle", size = 96 }) {
       {!imgError ? (
         <img
           src={assetSrc}
-          alt={`Daruma ${state}`}
+          alt={`Sensei ${state}`}
           onError={() => setImgError(true)}
           style={{ width: "100%", height: "100%", objectFit: "contain" }}
         />
@@ -212,7 +211,7 @@ function DojoMascot({ state = "idle", message, side = "right", size = 64 }) {
         {!imgError ? (
           <img
             src={assetSrc}
-            alt={`Daruma ${state}`}
+            alt={`Sensei ${state}`}
             onError={() => setImgError(true)}
             style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
@@ -526,7 +525,14 @@ function KanjiRadicals({ word }) {
                       ))}
                     </div>
                     {entry.mnemonic && (
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 5, fontStyle: "italic", lineHeight: 1.4 }}>
+                      <div style={{
+                        fontSize: 13, color: "#5B21B6", marginTop: 8,
+                        fontWeight: 600, lineHeight: 1.5,
+                        background: "rgba(124,58,237,0.06)",
+                        border: "1px solid rgba(124,58,237,0.18)",
+                        borderRadius: 6, padding: "6px 10px",
+                        display: "inline-block",
+                      }}>
                         → {entry.mnemonic}
                       </div>
                     )}
@@ -653,7 +659,115 @@ const CONN_COLORS = [
   { pattern: /助数詞/g,                                                                              color: "#B45309", bg: "rgba(180,83,9,0.10)" },    // counter → amber
   { pattern: /疑問詞/g,                                                                              color: "#0891B2", bg: "rgba(8,145,178,0.10)" },   // question word → teal
 ];
-function ColoredConn({ conn }) {
+
+// Glossary used for hover popovers and (for N5/N4) inline English labels.
+// `read` is hiragana for furigana ruby. `short` is the inline label (kept brief on purpose).
+const CONN_GLOSSARY = {
+  "V":        { short: "Verb",          desc: "A verb — an action or state word.",                                example: "食べる, 行く, する" },
+  "N":        { short: "Noun",          desc: "A noun — a person, thing, place, or idea.",                        example: "学生, 本, 東京" },
+  "い形":     { short: "i-Adjective",   read: "けい", desc: "A regular adjective ending in い.",                  example: "高い, 寒い, 美味しい" },
+  "な形":     { short: "na-Adjective",  read: "けい", desc: "An adjective that takes な before a noun.",          example: "静か(な), 元気(な)" },
+  "Vる":      { short: "Verb·plain",    desc: "Verb in plain dictionary form (ru-ending shown).",                  example: "食べる, 行く" },
+  "Vない":    { short: "Verb·negative", desc: "Verb negative-stem form.",                                          example: "食べない, 行かない" },
+  "Vた":      { short: "Verb·past",     desc: "Verb in plain past form (-ta).",                                    example: "食べた, 行った" },
+  "Vて":      { short: "Verb·te-form",  desc: "Verb in te-form — used to connect verbs/clauses.",                  example: "食べて, 行って" },
+  "Vた形":    { short: "Past form",     read: "けい", desc: "Plain past form of a verb.",                         example: "食べた, 行った, 飲んだ" },
+  "Vて形":    { short: "te-Form",       read: "けい", desc: "Connecting form using て / で.",                     example: "食べて, 飲んで, 行って" },
+  "Vます形":  { short: "Polite stem",   read: "けい", desc: "Verb stem before ます (the verb minus -masu).",      example: "食べ(ます), 行き(ます)" },
+  "V辞書形":  { short: "Dictionary form", read: "じしょけい", desc: "Verb in plain dictionary form.",             example: "食べる, 行く, 来る, する" },
+  "V普通形":  { short: "Plain form",    read: "ふつうけい", desc: "Verb in any plain (non-polite) conjugation.",  example: "食べる, 食べた, 食べない" },
+  "V可能":    { short: "Potential",     desc: "Potential / 'can do' form.",                                        example: "食べられる, 行ける" },
+  "V意向":    { short: "Volitional",    desc: "'Let's …' / volitional form.",                                      example: "食べよう, 行こう" },
+  "V条件":    { short: "Conditional",   desc: "If / conditional form.",                                            example: "食べれば, 行けば" },
+  "普通形":   { short: "Plain form",    read: "ふつうけい", desc: "Plain (non-polite) conjugation — used for verbs, adjectives, and copula.", example: "食べる, 食べた, 食べない, 高い, 静かだ" },
+  "尊敬語":   { short: "Respectful",    read: "そんけいご", desc: "Honorific speech — elevates the listener / subject.", example: "いらっしゃる, ご覧になる" },
+  "謙譲語":   { short: "Humble",        read: "けんじょうご", desc: "Humble speech — lowers oneself relative to the listener.", example: "申す, 拝見する, いたす" },
+  "助数詞":   { short: "Counter",       read: "じょすうし", desc: "Counter word for nouns.",                       example: "三本, 二個, 五人" },
+  "疑問詞":   { short: "Question word", read: "ぎもんし", desc: "Interrogative word.",                             example: "何, 誰, どこ, いつ" },
+};
+// Tokens whose inline English label should always show for N5/N4 (the ones beginners most need explained).
+const INLINE_LABEL_TOKENS = new Set(["V", "N", "い形", "な形"]);
+function isBeginnerCat(cat) { return typeof cat === "string" && (cat.startsWith("N5") || cat.startsWith("N4")); }
+
+// Look up glossary info for a matched token. Strips trailing parentheticals like "普通形（V）".
+function lookupConn(token) {
+  if (CONN_GLOSSARY[token]) return CONN_GLOSSARY[token];
+  const base = token.replace(/[（(].*$/, "");
+  return CONN_GLOSSARY[base] || null;
+}
+
+// One colored token with optional furigana, inline English label (beginners only),
+// and hover/tap popover. Self-contained — manages its own open state.
+function ConnToken({ token, color, bg, beginner }) {
+  const info = lookupConn(token);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDocClick); document.removeEventListener("keydown", onEsc); };
+  }, [open]);
+
+  // Render token text with optional furigana ruby.
+  const tokenContent = info?.read
+    ? <ruby>{token}<rt style={{ fontSize: "0.55em", fontWeight: 500 }}>{info.read}</rt></ruby>
+    : token;
+
+  const showInline = beginner && info && INLINE_LABEL_TOKENS.has(token);
+
+  return (
+    <span
+      ref={ref}
+      onMouseEnter={() => info && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={(e) => { if (!info) return; e.stopPropagation(); setOpen(o => !o); }}
+      style={{
+        position: "relative", display: "inline-block",
+        color, background: bg, padding: "1px 6px", borderRadius: 4, fontWeight: 700,
+        cursor: info ? "help" : "default",
+        textDecoration: info ? "underline dotted rgba(0,0,0,0.22)" : "none",
+        textUnderlineOffset: 3,
+      }}
+    >
+      {tokenContent}
+      {showInline && (
+        <span style={{ fontSize: "0.72em", opacity: 0.78, marginLeft: 5, fontWeight: 600, letterSpacing: "0.02em" }}>
+          · {info.short}
+        </span>
+      )}
+      {open && info && (
+        <span role="tooltip" style={{
+          position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+          background: "#FFFFFF", border: `2px solid ${color}`,
+          borderRadius: 10, padding: "10px 14px",
+          minWidth: 200, maxWidth: 280,
+          boxShadow: "0 8px 24px -4px rgba(0,0,0,0.18)",
+          zIndex: 100, whiteSpace: "normal", textAlign: "left",
+          color: C.ink, fontWeight: 400,
+          pointerEvents: "none",
+        }}>
+          <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%) rotate(45deg)", width: 12, height: 12, background: "#FFFFFF", borderTop: `2px solid ${color}`, borderLeft: `2px solid ${color}`, display: "block" }} />
+          <span style={{ display: "block", fontWeight: 800, fontSize: 13, color, marginBottom: 4 }}>
+            {token}{info.read ? ` · ${info.read}` : ""} <span style={{ color: C.muted, fontWeight: 600 }}>· {info.short}</span>
+          </span>
+          <span style={{ display: "block", fontSize: 12, color: C.inkDim, lineHeight: 1.5, marginBottom: info.example ? 6 : 0, fontFamily: "var(--font-latin)" }}>
+            {info.desc}
+          </span>
+          {info.example && (
+            <span className="jp" style={{ display: "block", fontSize: 12.5, color: C.muted, lineHeight: 1.4 }}>
+              <span style={{ ...KICKER, fontSize: 9, marginRight: 6, color: C.faint }}>例</span>{info.example}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ColoredConn({ conn, beginner }) {
   if (!conn) return null;
   const tokens = [];
   let remaining = conn;
@@ -668,9 +782,7 @@ function ColoredConn({ conn }) {
     if (!earliest) { tokens.push(<span key={key++} style={{ color: C.inkDim }}>{remaining}</span>); break; }
     if (earliestIdx > 0) tokens.push(<span key={key++} style={{ color: C.inkDim }}>{remaining.slice(0, earliestIdx)}</span>);
     tokens.push(
-      <span key={key++} style={{ color: matchedRule.color, background: matchedRule.bg, padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
-        {earliest[0]}
-      </span>
+      <ConnToken key={key++} token={earliest[0]} color={matchedRule.color} bg={matchedRule.bg} beginner={beginner} />
     );
     remaining = remaining.slice(earliestIdx + earliest[0].length);
   }
@@ -901,7 +1013,7 @@ function WrongItem({ w, isLast }) {
           &ldquo;{w.oneLiner}&rdquo;
         </div>
       )}
-      {w.conn && <div style={{ fontSize: 13, marginTop: 10, color: C.muted, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}><span style={JP_LABEL}>接続</span><span className="jp" style={{ fontSize: 14 }}><ColoredConn conn={w.conn} /></span></div>}
+      {w.conn && <div style={{ fontSize: 13, marginTop: 10, color: C.muted, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}><span style={JP_LABEL}>接続</span><span className="jp" style={{ fontSize: 14 }}><ColoredConn conn={w.conn} beginner={isBeginnerCat(w.cat)} /></span></div>}
       {w.n5syn && <div style={{ fontSize: 13, marginTop: 6, color: C.muted, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}><span style={{ ...KICKER, fontSize: 10, color: C.faint }}>≈ N5</span><span className="jp" style={{ fontSize: 13, color: C.inkDim, fontWeight: 600 }}>{w.n5syn}</span></div>}
       {w.ex && (
         <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
@@ -963,7 +1075,7 @@ function GlossaryItem({ item, mistakes, bookmarked, onToggle, onToggleBookmark, 
           {item.conn && (
             <div style={{ fontSize: 13, marginTop: 10, color: C.muted, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
               <span style={JP_LABEL}>接続</span>
-              <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={item.conn} /></span>
+              <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={item.conn} beginner={isBeginnerCat(item.cat)} /></span>
             </div>
           )}
           {item.n5syn && (
@@ -1527,6 +1639,7 @@ export default function App() {
   const [learnLesson, setLearnLesson] = useState(null);  // active lesson object
   const [studyIdx, setStudyIdx] = useState(0);           // which card the user is studying (0-4)
   const [studyRatings, setStudyRatings] = useState({});  // { itemIdx: "know" | "dontKnow" } — used to weight quiz emphasis
+  const [cardReaction, setCardReaction] = useState(null); // { rating, key } — momentary sensei feedback after rating
   const learnContextRef = useRef(null);                  // tracks when a quiz is launched FROM Learn mode
   const [customOpen, setCustomOpen] = useState(false);
   const [customCreateOpen, setCustomCreateOpen] = useState(false);
@@ -1823,23 +1936,24 @@ export default function App() {
           <div style={{ width: 70 }} />
         </div>
 
-        {/* DOJO HERO BANNER — atmospheric photo + bold typography */}
+        {/* DOJO HERO BANNER — sensei standing inside the dōjō */}
         <div style={{
           position: "relative",
-          height: wide ? 240 : 190,
+          height: wide ? 260 : 210,
           marginBottom: 22,
           borderRadius: 18,
           overflow: "hidden",
-          backgroundImage: `url('/dojo/training_hall.webp')`,
+          backgroundImage: `url('/dojo/bg_doujou.jpg')`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center 38%",
           boxShadow: "0 8px 28px -10px rgba(80,60,30,0.40), 0 2px 6px rgba(0,0,0,0.10)",
         }}>
-          {/* gradient — light overlay so the cartoon dōjō stays visible, dark only at bottom for text */}
+          {/* subtle bottom gradient for text legibility */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(20,15,8,0.72) 100%)",
+            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(20,15,8,0.78) 100%)",
           }} />
+
           {/* red accent corner stamp */}
           <div style={{
             position: "absolute", top: 16, right: 16,
@@ -1848,25 +1962,46 @@ export default function App() {
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
             transform: "rotate(-6deg)",
+            zIndex: 3,
           }}>
             <span className="jp-hero" style={{ fontSize: 22, color: "#FFF", lineHeight: 1, fontWeight: 800 }}>道</span>
           </div>
+
+          {/* SENSEI standing in the dōjō — anchored to bottom-left, full character */}
+          <img
+            src="/sensei/sensei-bowing.svg"
+            alt="Sensei welcoming you"
+            style={{
+              position: "absolute",
+              left: wide ? 18 : 8,
+              bottom: -4,
+              height: wide ? 230 : 170,
+              width: "auto",
+              objectFit: "contain",
+              filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.40))",
+              zIndex: 2,
+              pointerEvents: "none",
+            }}
+          />
+
           <div style={{
             position: "absolute", inset: 0,
-            display: "flex", flexDirection: "column", justifyContent: "flex-end",
-            padding: wide ? "26px 30px" : "20px 22px",
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            padding: wide ? "20px 30px 20px" : "16px 18px 16px",
+            paddingLeft: wide ? 250 : 168,
             color: "#FFFFFF",
+            zIndex: 2,
           }}>
-            <div className="en-impact" style={{ fontSize: 11, color: "rgba(255,255,255,0.92)", letterSpacing: "0.32em", marginBottom: 8 }}>
+            <div className="en-impact" style={{ fontSize: wide ? 11 : 10, color: "rgba(255,255,255,0.95)", letterSpacing: "0.28em", marginBottom: 8, textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>
               ENTER THE DOJO
             </div>
-            <div className="jp-hero" style={{ fontSize: wide ? 56 : 42, lineHeight: 1, textShadow: "0 4px 16px rgba(0,0,0,0.6)" }}>
+            <div className="jp-hero" style={{ fontSize: wide ? 48 : 32, lineHeight: 1, textShadow: "0 4px 16px rgba(0,0,0,0.75)", marginBottom: 10 }}>
               道場の道
             </div>
-            <div className="en-impact" style={{ marginTop: 10, fontSize: wide ? 14 : 12, color: "#FFFFFF", letterSpacing: "0.22em" }}>
-              CHOOSE YOUR BELT
-              <span style={{ marginLeft: 10, color: C.accentHi, fontFamily: "var(--font-latin)", fontWeight: 700 }}>·</span>
-              <span style={{ marginLeft: 10, color: "rgba(255,255,255,0.92)" }}>BEGIN TRAINING</span>
+            <div className="en-impact" style={{ fontSize: wide ? 12 : 10, color: "#FFFFFF", letterSpacing: "0.18em", textShadow: "0 2px 6px rgba(0,0,0,0.7)", lineHeight: 1.5 }}>
+              CHOOSE YOUR BELT<br />
+              <span style={{ color: C.accentHi, fontFamily: "var(--font-latin)", fontWeight: 700, marginRight: 8 }}>·</span>
+              <span style={{ color: "rgba(255,255,255,0.92)" }}>BEGIN TRAINING</span>
             </div>
           </div>
         </div>
@@ -2091,9 +2226,17 @@ export default function App() {
     const labelConn = isBeginner ? "Pattern" : "接続";
 
     const rateAndAdvance = (rating) => {
+      if (cardReaction) return; // ignore double-clicks while reaction plays
       setStudyRatings(prev => ({ ...prev, [studyIdx]: rating }));
-      if (isLast) beginLessonQuiz();
-      else setStudyIdx(i => i + 1);
+      // Always play the headword audio so user hears pronunciation reinforced
+      try { speak(cleanJp(it.jp)); } catch {}
+      // Show sensei reaction for ~1.5s, then advance / start quiz
+      setCardReaction({ rating, key: studyIdx });
+      window.setTimeout(() => {
+        setCardReaction(null);
+        if (isLast) beginLessonQuiz();
+        else setStudyIdx(i => i + 1);
+      }, 1500);
     };
     const retreat = () => { if (!isFirst) setStudyIdx(i => i - 1); };
     const currentRating = studyRatings[studyIdx];
@@ -2134,7 +2277,7 @@ export default function App() {
               fontFamily: FONT_LATIN, fontWeight: 700,
               letterSpacing: "0.10em", textTransform: "uppercase",
               fontSize: 13, color: C.accent, marginBottom: 6,
-            }}>達磨先生 · Daruma-sensei</div>
+            }}>先生 · Sensei</div>
             <div style={{
               position: "relative",
               background: "#FFFFFF", border: "1px solid rgba(188,0,45,0.20)",
@@ -2169,7 +2312,7 @@ export default function App() {
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <Chip tone="accent" style={{ fontSize: 10 }}>{CATEGORIES[it.cat] || it.cat}</Chip>
-            <span style={{ ...KICKER, color: C.faint, fontSize: 9 }}>NEW WORD</span>
+            <span style={{ ...KICKER, color: C.muted, fontSize: 11, fontWeight: 800, letterSpacing: "0.16em" }}>NEW WORD</span>
           </div>
 
           {/* Headword — big and centered */}
@@ -2187,7 +2330,7 @@ export default function App() {
             <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
               <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8, padding: "6px 14px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
                 <span style={isBeginner ? { ...KICKER, fontSize: 10, color: C.muted } : JP_LABEL}>{labelConn}</span>
-                <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={it.conn} /></span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={it.conn} beginner={isBeginner} /></span>
               </div>
             </div>
           )}
@@ -2218,28 +2361,60 @@ export default function App() {
           <KanjiRadicals word={it.jp} />
         </div>
 
+        {/* SENSEI REACTION — appears momentarily after rating */}
+        {cardReaction && (() => {
+          const isKnow = cardReaction.rating === "know";
+          const senseiSrc = isKnow ? "/sensei/sensei-thumbs.svg" : "/sensei/sensei-concerned.svg";
+          const reactionMsg = isKnow ? "素晴らしい！Excellent!" : "一緒に練習しよう · Let's practice together";
+          const reactionColor = isKnow ? C.pass : C.accent;
+          const reactionBg    = isKnow ? "#F0FAF4" : "#FFF5F6";
+          return (
+            <div className="pop-in" key={`reaction_${cardReaction.key}_${cardReaction.rating}`} style={{
+              display: "flex", alignItems: "center", gap: 14,
+              padding: "14px 16px",
+              background: reactionBg,
+              border: `2px solid ${reactionColor}`,
+              borderRadius: 14, marginBottom: 10,
+              boxShadow: `0 6px 18px -8px ${reactionColor}`,
+            }}>
+              <img src={senseiSrc} alt={isKnow ? "Sensei thumbs up" : "Sensei concerned"} style={{
+                width: 64, height: 64, flexShrink: 0,
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.12))",
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...KICKER, fontSize: 10, color: reactionColor, marginBottom: 4 }}>
+                  {isKnow ? "覚えた · Remembered" : "聞いてみよう · Listen again"}
+                </div>
+                <div className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.4 }}>
+                  {reactionMsg}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* RATING BAR — Don't Know / I Know — both advance, rating informs quiz emphasis */}
         <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-          <button onClick={() => rateAndAdvance("dontKnow")} className="btn-hover" style={{
+          <button onClick={() => rateAndAdvance("dontKnow")} disabled={!!cardReaction} className="btn-hover" style={{
             flex: 1, padding: "16px 18px",
             fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
             background: currentRating === "dontKnow" ? C.accent : "#FFF5F6",
             color: currentRating === "dontKnow" ? "#fff" : C.accent,
-            border: `2px solid ${C.accent}`, borderRadius: 14, cursor: "pointer",
+            border: `2px solid ${C.accent}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-            fontFamily: FONT_LATIN,
+            fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "dontKnow" ? 0.45 : 1,
             boxShadow: currentRating === "dontKnow" ? `0 4px 14px -4px ${C.accentLine}` : "none",
           }}>
             <IconX size={16} /> Don't Know
           </button>
-          <button onClick={() => rateAndAdvance("know")} className="btn-hover" style={{
+          <button onClick={() => rateAndAdvance("know")} disabled={!!cardReaction} className="btn-hover" style={{
             flex: 1, padding: "16px 18px",
             fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
             background: currentRating === "know" ? C.pass : "#F0FAF4",
             color: currentRating === "know" ? "#fff" : C.pass,
-            border: `2px solid ${C.pass}`, borderRadius: 14, cursor: "pointer",
+            border: `2px solid ${C.pass}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-            fontFamily: FONT_LATIN,
+            fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "know" ? 0.45 : 1,
             boxShadow: currentRating === "know" ? `0 4px 14px -4px ${C.passLine}` : "none",
           }}>
             <IconCheck size={16} /> I Know
@@ -2964,7 +3139,7 @@ export default function App() {
                   {q.conn && (
                     <div style={{ marginTop: 22, display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
                       <span style={JP_LABEL}>接続</span>
-                      <span className="jp" style={{ fontSize: 15, fontWeight: 600 }}><ColoredConn conn={q.conn} /></span>
+                      <span className="jp" style={{ fontSize: 15, fontWeight: 600 }}><ColoredConn conn={q.conn} beginner={isBeginnerCat(q.cat)} /></span>
                     </div>
                   )}
                 </>
@@ -3060,7 +3235,7 @@ export default function App() {
                 {q.conn && (
                   <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ ...JP_LABEL, flexShrink: 0 }}>接続</span>
-                    <span className="jp" style={{ fontSize: 15, fontWeight: 600 }}><ColoredConn conn={q.conn} /></span>
+                    <span className="jp" style={{ fontSize: 15, fontWeight: 600 }}><ColoredConn conn={q.conn} beginner={isBeginnerCat(q.cat)} /></span>
                   </div>
                 )}
 
