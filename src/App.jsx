@@ -279,11 +279,24 @@ function KanjiRadicals({ word }) {
 
   if (kanjiList.length === 0) return null;
 
+  // Show only kanji that have radicals OR are still loading.
+  // Hide kanji where decomposition isn't available (no point showing "寝 —").
+  const renderable = kanjiList.filter(k => entries[k] || loading);
+  if (renderable.length === 0) return null;
+
   return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ ...KICKER, color: C.kanji, fontSize: 10, marginBottom: 8 }}>Components · 部首</div>
+    <div style={{ marginTop: 14 }}>
+      <div style={{
+        fontFamily: FONT_LATIN,
+        fontWeight: 700,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        fontSize: 12,
+        color: C.kanji,
+        marginBottom: 10,
+      }}>Components · 部首</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {kanjiList.map(k => {
+        {renderable.map(k => {
           const entry = entries[k];
           return (
             <div key={k} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -307,7 +320,7 @@ function KanjiRadicals({ word }) {
                     )}
                   </>
                 ) : (
-                  <div style={{ fontSize: 11, color: C.faint, fontStyle: "italic", paddingTop: 6 }}>{loading ? "Decomposing…" : "—"}</div>
+                  <div style={{ fontSize: 11, color: C.faint, fontStyle: "italic", paddingTop: 6 }}>Decomposing…</div>
                 )}
               </div>
             </div>
