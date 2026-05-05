@@ -2394,9 +2394,16 @@ export default function App() {
         </div>
 
         {/* Belt header banner — features the level's dōjō character */}
-        <div style={{ background: lvl.beltColor, color: lvl.textOn, borderRadius: 16, padding: "16px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, boxShadow: `0 8px 24px -10px ${lvl.glow}`, position: "relative", overflow: "hidden" }}>
-          <div style={{ flex: "0 0 auto", width: 76, height: 92, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src={lvl.character} alt={lvl.characterEn} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.20))" }} />
+        <div style={{ background: lvl.beltColor, color: lvl.textOn, borderRadius: 16, padding: "16px 20px", marginBottom: 14, display: "flex", alignItems: "center", gap: 16, boxShadow: `0 8px 24px -10px ${lvl.glow}`, position: "relative", overflow: "hidden" }}>
+          <div style={{ flex: "0 0 auto", width: 92, height: 92, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            {/* Soft dark halo behind the character so the white judo gi pops on bright belt colors */}
+            <div aria-hidden="true" style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: lvl.textOn === "#FFFFFF"
+                ? "radial-gradient(circle at 50% 55%, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.10) 45%, transparent 70%)"
+                : "radial-gradient(circle at 50% 55%, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.08) 45%, transparent 70%)",
+            }} />
+            <img src={lvl.character} alt={lvl.characterEn} style={{ position: "relative", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: lvl.textOn === "#FFFFFF" ? "drop-shadow(0 3px 6px rgba(0,0,0,0.35))" : "drop-shadow(0 3px 6px rgba(0,0,0,0.30))" }} />
           </div>
           <div style={{ height: 60, width: 1, background: lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.10)", flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2405,6 +2412,48 @@ export default function App() {
             <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6, fontWeight: 600 }}>{progress.completed.length} / {lessons.length} lessons · {progress.xp || 0} XP</div>
           </div>
         </div>
+
+        {/* Continue CTA — jump straight to the user's current lesson without scrolling */}
+        {firstIncompleteIdx >= 0 && (() => {
+          const nextLesson = lessons[firstIncompleteIdx];
+          const isFirstEver = progress.completed.length === 0;
+          return (
+            <button
+              onClick={() => startLesson(nextLesson)}
+              className="btn-hover"
+              style={{
+                width: "100%", marginBottom: 18,
+                background: `linear-gradient(135deg, ${C.accent} 0%, #8B0021 100%)`,
+                color: "#FFF", border: "none", borderRadius: 14,
+                padding: "14px 18px", cursor: "pointer", textAlign: "left",
+                fontFamily: FONT_LATIN,
+                display: "flex", alignItems: "center", gap: 14,
+                boxShadow: "0 8px 22px -10px rgba(188,0,45,0.55)",
+              }}
+            >
+              <div style={{
+                flex: "0 0 auto", width: 44, height: 44, borderRadius: "50%",
+                background: "rgba(255,255,255,0.16)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 22,
+              }}>
+                {isFirstEver ? "🥋" : "▶"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="en-impact" style={{ fontSize: 11, color: "rgba(255,255,255,0.78)", letterSpacing: "0.20em", marginBottom: 3 }}>
+                  {isFirstEver ? "START TRAINING" : "CONTINUE"}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "0.02em" }}>
+                  第{nextLesson.chapter}章 · Chapter {nextLesson.chapter} · Lesson {nextLesson.number}
+                </div>
+                <div className="jp" style={{ fontSize: 12, color: "rgba(255,255,255,0.82)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 500 }}>
+                  {nextLesson.items.slice(0, 3).map(it => it.jp).join(" · ")}{nextLesson.items.length > 3 ? " ..." : ""}
+                </div>
+              </div>
+              <IconChevRt size={18} style={{ color: "#FFF", flexShrink: 0 }} />
+            </button>
+          );
+        })()}
 
         <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {lessons.map((lesson, i) => {
