@@ -75,11 +75,11 @@ const LESSON_SIZE = 5;
 // Same illustration (judo_boy), 5 belt color variants — visual progression as
 // you climb the ranks. Recolored programmatically via scripts/recolor-belts.js.
 const LEVELS = [
-  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)",   character: "/dojo/judo_boy_white.png",  characterEn: "White-belt student" },
-  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)", character: "/dojo/judo_boy_yellow.png", characterEn: "Yellow-belt student" },
-  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)", character: "/dojo/judo_boy_green.png",  characterEn: "Green-belt student" },
-  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)", character: "/dojo/judo_boy_brown.png",  characterEn: "Brown-belt student" },
-  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)", character: "/dojo/judo_boy_black.png",  characterEn: "Black-belt master" },
+  { id: "N5", belt: "白帯", beltReading: "しろおび", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)",   character: "/dojo/judo_boy_white.png",  characterEn: "White-belt student" },
+  { id: "N4", belt: "黄帯", beltReading: "きおび",   beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)", character: "/dojo/judo_boy_yellow.png", characterEn: "Yellow-belt student" },
+  { id: "N3", belt: "緑帯", beltReading: "みどりおび", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)", character: "/dojo/judo_boy_green.png",  characterEn: "Green-belt student" },
+  { id: "N2", belt: "茶帯", beltReading: "ちゃおび", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)", character: "/dojo/judo_boy_brown.png",  characterEn: "Brown-belt student" },
+  { id: "N1", belt: "黒帯", beltReading: "くろおび", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)", character: "/dojo/judo_boy_black.png",  characterEn: "Black-belt master" },
 ];
 
 const LEVEL_CATEGORIES = {
@@ -2251,7 +2251,7 @@ export default function App() {
                   {/* BELT ID */}
                   <div style={{ flex: "0 0 auto", textAlign: "center", paddingLeft: 4, borderLeft: `1px solid ${lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.10)"}`, paddingRight: 14 }}>
                     <div className="jp-display" style={{ fontSize: wide ? 34 : 28, fontWeight: 700, lineHeight: 1, letterSpacing: "0.04em" }}>{lvl.id}</div>
-                    <div className="jp" style={{ fontSize: 13, fontWeight: 700, marginTop: 4, opacity: 0.85 }}>{lvl.belt}</div>
+                    <div className="jp" style={{ fontSize: 13, fontWeight: 700, marginTop: 4, opacity: 0.85 }}><Furigana jp={lvl.belt} reading={lvl.beltReading} /></div>
                   </div>
                   {/* INFO */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -2336,7 +2336,7 @@ export default function App() {
           <button onClick={() => setScreen("learn-levels")} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconArrowL size={12} /> Levels
           </button>
-          <div style={{ ...KICKER, color: C.muted }}>{lvl?.belt} · {lvl?.id}</div>
+          <div style={{ ...KICKER, color: C.muted }}>{lvl ? <Furigana jp={lvl.belt} reading={lvl.beltReading} /> : null} · {lvl?.id}</div>
           <div style={{ width: 70 }} />
         </div>
 
@@ -2347,7 +2347,7 @@ export default function App() {
           </div>
           <div style={{ height: 60, width: 1, background: lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.10)", flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="jp-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.04em" }}>{lvl.belt} {lvl.beltEn}</div>
+            <div className="jp-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.04em" }}><Furigana jp={lvl.belt} reading={lvl.beltReading} /> {lvl.beltEn}</div>
             <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>{lvl.rank}</div>
             <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6, fontWeight: 600 }}>{progress.completed.length} / {lessons.length} lessons · {progress.xp || 0} XP</div>
           </div>
@@ -2461,7 +2461,7 @@ export default function App() {
           <button onClick={() => { learnContextRef.current = null; setScreen("learn-lessons"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconX size={12} /> Exit
           </button>
-          <div style={{ ...KICKER, color: C.muted }}>{lvl.belt} · Lesson {lesson.number}</div>
+          <div style={{ ...KICKER, color: C.muted }}><Furigana jp={lvl.belt} reading={lvl.beltReading} /> · Lesson {lesson.number}</div>
           <div className="num" style={{ color: C.inkDim, fontSize: 13 }}>
             {(studyIdx + 1).toString().padStart(2, "0")} <span style={{ color: C.faint }}>/</span> {totalCards.toString().padStart(2, "0")}
           </div>
