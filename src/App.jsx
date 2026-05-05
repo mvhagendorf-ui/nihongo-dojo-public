@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { CATEGORIES, CATEGORY_GROUPS, SIM_GROUPS, ALL_DATA, PASS_SCORE, QUESTIONS_PER_TEST, TIMER_SECONDS } from "./data";
 import { playSound } from "./audio";
-import { loadHistory, saveSession, updateSRS, getSRSWeights, loadSRS, loadBookmarks, saveBookmarks, loadCustomQuizzes, saveCustomQuizzes } from "./storage";
+import { loadHistory, saveSession, updateSRS, getSRSWeights, loadSRS, loadBookmarks, saveBookmarks, loadCustomQuizzes, saveCustomQuizzes, loadLearnProgress, markLessonCompleted } from "./storage";
 import { cloudEnabled, getSession, signIn, signUp, signOut, onAuthChange, fetchCloud, scheduleSync, mergeSRS, mergeHistory, mergeBookmarks } from "./cloud";
 
 // ─────────── DESIGN TOKENS ───────────
@@ -34,6 +34,63 @@ const FONT_NUM = "'JetBrains Mono', 'SF Mono', Menlo, monospace";
 
 const KICKER = { fontFamily: FONT_LATIN, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 11, color: C.muted };
 const JP_LABEL = { fontFamily: FONT_JP, fontSize: 14, fontWeight: 700, color: C.faint, letterSpacing: "0.04em", textTransform: "none" };
+
+// ─────────── DOJO LEARN MODE — LEVELS & BELTS ───────────
+// Each JLPT level maps to a martial-arts belt. Lessons are auto-chunked into
+// groups of 5 mixed grammar+vocab items per level.
+const LESSON_SIZE = 5;
+
+const LEVELS = [
+  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)" },
+  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)" },
+  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)" },
+  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)" },
+  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)" },
+];
+
+const LEVEL_CATEGORIES = {
+  N5: ["N5_GRAMMAR", "N5_VOCAB"],
+  N4: ["N4_GRAMMAR", "N4_VOCAB"],
+  N3: ["N3_GRAMMAR", "N3_VOCAB"],
+  N2: ["N2_GRAMMAR", "N2_GRAMMAR_FULL", "N2_VOCAB", "N2_VERBS", "BUSINESS_VOCAB"],
+  N1: ["N1_GRAMMAR", "N1_GRAMMAR_FULL", "N1_VOCAB"],
+};
+
+function getItemsForLevel(level) {
+  const cats = LEVEL_CATEGORIES[level] || [];
+  return ALL_DATA.filter(d => cats.includes(d.cat));
+}
+
+// Auto-chunk a level's items into ordered lessons of LESSON_SIZE.
+// Mixes grammar and vocab in each lesson by interleaving (grammar tends to be
+// shorter — interleaving prevents 30-vocab streaks).
+function getLessonsForLevel(level) {
+  const all = getItemsForLevel(level);
+  const grammar = all.filter(d => d.cat.includes("GRAMMAR"));
+  const vocab   = all.filter(d => !d.cat.includes("GRAMMAR"));
+  // Interleave: alternate roughly proportionally
+  const interleaved = [];
+  const ratio = vocab.length / Math.max(1, grammar.length);
+  let gi = 0, vi = 0;
+  while (gi < grammar.length || vi < vocab.length) {
+    if (gi < grammar.length) interleaved.push(grammar[gi++]);
+    for (let k = 0; k < ratio && vi < vocab.length; k++) interleaved.push(vocab[vi++]);
+  }
+  // Now chunk
+  const lessons = [];
+  for (let i = 0; i < interleaved.length; i += LESSON_SIZE) {
+    const num = Math.floor(i / LESSON_SIZE) + 1;
+    lessons.push({
+      id: `${level}_lesson_${num}`,
+      level,
+      number: num,
+      items: interleaved.slice(i, i + LESSON_SIZE),
+      // Every 5 lessons = a chapter (for chapter-test gating in Phase 2)
+      chapter: Math.floor((num - 1) / 5) + 1,
+    });
+  }
+  return lessons;
+}
 
 // ─────────── ICONS (2px stroke) ───────────
 const Icon = ({ d, size = 16, stroke = "currentColor", fill = "none", style }) => (
@@ -1309,6 +1366,11 @@ export default function App() {
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [bookmarksExpanded, setBookmarksExpanded] = useState(null);
   const [customQuizzes, setCustomQuizzes] = useState(loadCustomQuizzes);
+  // Learn mode state
+  const [learnProgress, setLearnProgress] = useState(loadLearnProgress);
+  const [learnLevel, setLearnLevel] = useState(null);    // e.g. "N5"
+  const [learnLesson, setLearnLesson] = useState(null);  // active lesson object
+  const learnContextRef = useRef(null);                  // tracks when a quiz is launched FROM Learn mode
   const [customOpen, setCustomOpen] = useState(false);
   const [customCreateOpen, setCustomCreateOpen] = useState(false);
   const [quizPool, setQuizPool] = useState(ALL_DATA);
@@ -1382,6 +1444,12 @@ export default function App() {
       saveSession({ score, total, bestStreak, cats: selectedCats, wrongList: slimWrong });
       setHistory(loadHistory());
       setSrs(loadSRS());
+      // If this was a Learn-mode lesson, mark it complete and update progress
+      if (learnContextRef.current) {
+        const { level, lessonId } = learnContextRef.current;
+        const newProgress = markLessonCompleted(level, lessonId, score, total);
+        setLearnProgress(newProgress);
+      }
     }
   }, [screen, total, score, bestStreak, selectedCats, wrongList]);
 
@@ -1402,6 +1470,33 @@ export default function App() {
     savedRef.current = false;
     setScreen("quiz");
   }, [selectedCats, numQuestions, timerMin, timerSec]);
+
+  // Start a Learn-mode lesson — first show study cards, then quiz on the same items.
+  const startLesson = useCallback((lesson) => {
+    if (!lesson || !lesson.items || lesson.items.length === 0) return;
+    setLearnLesson(lesson);
+    learnContextRef.current = { level: lesson.level, lessonId: lesson.id };
+    setScreen("learn-study");
+  }, []);
+
+  // Called from study screen when user clicks "Begin practice" — kicks off the quiz.
+  const beginLessonQuiz = useCallback(() => {
+    const lesson = learnLesson;
+    if (!lesson) return;
+    const items = lesson.items.map((it, i) => ({ ...it, _type: pickQuestionType(it), num: i + 1 }));
+    setQuestions(items);
+    setCurrent(0); setSelected(null); setScore(0); setTotal(0);
+    setStreak(0); setBestStreak(0); setWrongList([]); setRetryQueue([]);
+    setShowNext(false);
+    // No timer for lessons — the goal is learning, not speed
+    setTimeLeft(0);
+    setTimerActive(false);
+    setQuizPool(getItemsForLevel(lesson.level));  // pool of distractors from same level
+    setChoices(generateChoices(items[0], getItemsForLevel(lesson.level)));
+    prefetchRadicalsForJp(items.map(p => p.jp));
+    savedRef.current = false;
+    setScreen("quiz");
+  }, [learnLesson]);
 
   const startCustomQuiz = useCallback((quiz) => {
     // NEW FORMAT: quiz has full AI-designed questions with prompts + choices
@@ -1548,6 +1643,236 @@ export default function App() {
     );
   }
 
+  // ═════════ LEARN — LEVEL SELECT (Belt cards) ═════════
+  if (screen === "learn-levels") {
+    return (
+      <div style={PAGE}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <button onClick={() => { learnContextRef.current = null; setLearnLevel(null); setLearnLesson(null); setScreen("menu"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <IconArrowL size={12} /> Menu
+          </button>
+          <div style={{ ...KICKER, color: C.muted }}>道場 · Dojo</div>
+          <div style={{ width: 70 }} />
+        </div>
+
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div className="jp-display" style={{ fontSize: wide ? 36 : 28, fontWeight: 600, color: C.ink, letterSpacing: "0.12em" }}>道場の道</div>
+          <div style={{ ...KICKER, marginTop: 8, fontSize: 12 }}>Choose your belt · Begin training</div>
+        </div>
+
+        <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {LEVELS.map(lvl => {
+            const lessons = getLessonsForLevel(lvl.id);
+            const completed = (learnProgress[lvl.id]?.completed || []).length;
+            const xp = learnProgress[lvl.id]?.xp || 0;
+            const totalLessons = lessons.length;
+            const pct = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
+            return (
+              <button
+                key={lvl.id}
+                onClick={() => { setLearnLevel(lvl.id); setScreen("learn-lessons"); }}
+                className="btn-hover"
+                style={{
+                  background: lvl.beltColor, color: lvl.textOn, border: "none",
+                  borderRadius: 16, padding: 0, cursor: "pointer", textAlign: "left",
+                  fontFamily: FONT_LATIN, overflow: "hidden", position: "relative",
+                  boxShadow: `0 2px 6px ${lvl.glow}, 0 12px 32px -12px ${lvl.glow}`,
+                  display: "block",
+                }}
+              >
+                {/* belt stripe — narrow color bar at top */}
+                <div style={{ height: 6, background: lvl.beltStripe }} />
+                <div style={{ padding: wide ? "20px 24px" : "16px 18px", display: "flex", alignItems: "center", gap: 18 }}>
+                  <div style={{ flex: "0 0 auto", textAlign: "center" }}>
+                    <div className="jp-display" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, letterSpacing: "0.04em" }}>{lvl.id}</div>
+                    <div className="jp" style={{ fontSize: 14, fontWeight: 700, marginTop: 4, opacity: 0.85 }}>{lvl.belt}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "0.02em" }}>{lvl.beltEn}</div>
+                    <div style={{ fontSize: 12, marginTop: 3, opacity: 0.78 }}>{lvl.rank}</div>
+                    {/* progress bar */}
+                    <div style={{ marginTop: 12, height: 5, background: "rgba(0,0,0,0.18)", borderRadius: 3, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.95)" : "rgba(31,41,55,0.85)", transition: "width 0.6s ease" }} />
+                    </div>
+                    <div style={{ fontSize: 11, marginTop: 6, opacity: 0.78, fontWeight: 500 }}>
+                      {completed} / {totalLessons} lessons{xp > 0 ? ` · ${xp} XP` : ""}
+                    </div>
+                  </div>
+                  <div style={{ flex: "0 0 auto", opacity: 0.7 }}>
+                    <IconChevRt size={18} />
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 24, padding: "14px 18px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
+          <strong style={{ color: C.ink }}>How it works</strong> — each lesson teaches 5 mixed grammar + vocabulary items. Study the cards, then take a 5-question quiz. Pass to unlock the next lesson and earn XP. Every 5 lessons forms a chapter.
+        </div>
+      </div>
+    );
+  }
+
+  // ═════════ LEARN — LESSON LIST ═════════
+  if (screen === "learn-lessons") {
+    const lvl = LEVELS.find(l => l.id === learnLevel);
+    const lessons = getLessonsForLevel(learnLevel);
+    const progress = learnProgress[learnLevel] || { completed: [], xp: 0, scores: {} };
+    const completedSet = new Set(progress.completed || []);
+    // Determine the next available lesson — first one not yet completed (Duolingo-style sequential unlock)
+    const firstIncompleteIdx = lessons.findIndex(l => !completedSet.has(l.id));
+    return (
+      <div style={PAGE}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <button onClick={() => setScreen("learn-levels")} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <IconArrowL size={12} /> Levels
+          </button>
+          <div style={{ ...KICKER, color: C.muted }}>{lvl?.belt} · {lvl?.id}</div>
+          <div style={{ width: 70 }} />
+        </div>
+
+        {/* Belt header banner */}
+        <div style={{ background: lvl.beltColor, color: lvl.textOn, borderRadius: 14, padding: "18px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, boxShadow: `0 8px 24px -10px ${lvl.glow}` }}>
+          <div style={{ height: 4, width: 36, background: lvl.beltStripe, borderRadius: 2, flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div className="jp-display" style={{ fontSize: 20, fontWeight: 700, letterSpacing: "0.04em" }}>{lvl.belt} {lvl.beltEn}</div>
+            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 3 }}>{progress.completed.length} / {lessons.length} lessons · {progress.xp || 0} XP</div>
+          </div>
+        </div>
+
+        <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {lessons.map((lesson, i) => {
+            const isCompleted = completedSet.has(lesson.id);
+            const isAvailable = i === firstIncompleteIdx || isCompleted;
+            const isLocked = !isAvailable;
+            const score = progress.scores?.[lesson.id]?.score || 0;
+            const total = progress.scores?.[lesson.id]?.total || lesson.items.length;
+            const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+            // Show chapter divider before lesson #1, #6, #11, etc.
+            const chapter = lesson.chapter;
+            const showChapterDivider = i === 0 || lessons[i - 1].chapter !== chapter;
+            return (
+              <div key={lesson.id}>
+                {showChapterDivider && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 10px" }}>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                    <div style={{ ...KICKER, fontSize: 11, color: C.kanji, letterSpacing: "0.18em" }}>第{chapter}章 · Chapter {chapter}</div>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                  </div>
+                )}
+                <button
+                  onClick={() => isAvailable && startLesson(lesson)}
+                  disabled={isLocked}
+                  className={isAvailable ? "btn-hover" : ""}
+                  style={{
+                    width: "100%",
+                    background: isCompleted ? C.passSoft : (isLocked ? C.mutedBg : C.surface),
+                    border: `1px solid ${isCompleted ? C.passLine : isLocked ? C.border : C.border}`,
+                    borderLeft: isAvailable && !isCompleted ? `3px solid ${C.accent}` : `3px solid ${isCompleted ? C.pass : "transparent"}`,
+                    borderRadius: 12, padding: "14px 16px", cursor: isAvailable ? "pointer" : "not-allowed",
+                    textAlign: "left", fontFamily: FONT_LATIN, opacity: isLocked ? 0.55 : 1,
+                    display: "flex", alignItems: "center", gap: 14,
+                  }}
+                >
+                  <div style={{ flex: "0 0 auto", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: isCompleted ? C.pass : isLocked ? C.border : C.accentSoft, color: isCompleted ? "#fff" : isLocked ? C.faint : C.accent, fontWeight: 700 }}>
+                    {isCompleted ? <IconCheck size={20} /> : isLocked ? "🔒" : <span className="num" style={{ fontSize: 14 }}>{lesson.number}</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: isLocked ? C.faint : C.ink }}>
+                      Lesson {lesson.number}
+                      {isCompleted && <span className="num" style={{ marginLeft: 10, fontSize: 12, color: C.pass, fontWeight: 600 }}>{pct}%</span>}
+                    </div>
+                    <div className="jp" style={{ fontSize: 13, color: C.muted, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {lesson.items.slice(0, 3).map(it => it.jp).join(" · ")}{lesson.items.length > 3 ? " ..." : ""}
+                    </div>
+                  </div>
+                  {isAvailable && !isCompleted && <IconChevRt size={16} style={{ color: C.accent }} />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ═════════ LEARN — STUDY MODE (5 cards before quiz) ═════════
+  if (screen === "learn-study") {
+    const lesson = learnLesson;
+    if (!lesson) { setScreen("learn-levels"); return null; }
+    const lvl = LEVELS.find(l => l.id === lesson.level);
+    return (
+      <div style={PAGE}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <button onClick={() => { learnContextRef.current = null; setScreen("learn-lessons"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <IconArrowL size={12} /> Lessons
+          </button>
+          <div style={{ ...KICKER, color: C.muted }}>{lvl.belt} · Lesson {lesson.number}</div>
+          <div style={{ width: 70 }} />
+        </div>
+
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div className="jp-display" style={{ fontSize: 24, fontWeight: 600, color: C.ink, letterSpacing: "0.06em" }}>学ぶ · Study</div>
+          <div style={{ ...KICKER, marginTop: 6, fontSize: 11, color: C.faint }}>Read each card, then take the practice quiz</div>
+        </div>
+
+        <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
+          {lesson.items.map((it, i) => (
+            <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 2px rgba(80,60,30,0.04), 0 6px 18px -8px rgba(80,60,30,0.10)" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
+                <span className="num" style={{ color: C.accent, fontWeight: 700, fontSize: 14 }}>{(i + 1).toString().padStart(2, "0")}</span>
+                <span style={{ ...KICKER, fontSize: 9, color: C.faint }}>{CATEGORIES[it.cat] || it.cat}</span>
+              </div>
+              <div className="jp" style={{ fontSize: 28, fontWeight: 700, color: C.ink, letterSpacing: "0.02em", lineHeight: 1.3 }}>
+                <Furigana jp={it.jp} reading={it.reading} /> <SpeakBtn text={cleanJp(it.jp)} size={16} />
+              </div>
+              <div style={{ fontSize: 15, color: C.inkDim, marginTop: 6 }}>{it.en}</div>
+              {it.conn && (
+                <div style={{ marginTop: 10, display: "inline-flex", alignItems: "baseline", gap: 8, padding: "5px 12px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                  <span style={JP_LABEL}>接続</span>
+                  <span className="jp" style={{ fontSize: 13, fontWeight: 600 }}><ColoredConn conn={it.conn} /></span>
+                </div>
+              )}
+              {it.ex && (
+                <div style={{ marginTop: 12, padding: "10px 12px", background: C.elevated, borderLeft: `2px solid ${C.accent}`, borderRadius: 6 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={JP_LABEL}>例</span>
+                    <span className="jp" style={{ flex: 1, fontSize: 15, color: C.ink, fontWeight: 600, lineHeight: 1.55 }}><FuriganaSentence text={it.ex} /></span>
+                    <SpeakBtn text={stripFurigana(it.ex)} size={12} />
+                  </div>
+                  {it.exEn && (
+                    <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic", marginTop: 4, marginLeft: 24 }}>{it.exEn}</div>
+                  )}
+                </div>
+              )}
+              {it.kanjiStory && (
+                <div style={{ marginTop: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "3px solid #7C3AED", borderRadius: 8, padding: "10px 12px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 16, lineHeight: 1.1 }}>🧠</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...KICKER, color: C.kanji, fontSize: 9, marginBottom: 3 }}>{storyLabel(it.jp)}</div>
+                    <div style={{ fontSize: 13, color: "#5B21B6", fontWeight: 500, lineHeight: 1.5 }}>{it.kanjiStory}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button onClick={beginLessonQuiz} className="btn-hover" style={{
+          width: "100%", padding: "16px 22px",
+          fontSize: 14, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase",
+          background: C.accent, color: "#fff",
+          border: `1px solid ${C.accent}`, borderRadius: 12, cursor: "pointer",
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+          fontFamily: FONT_LATIN,
+        }}>
+          Begin Practice Quiz <IconChevRt size={14} />
+        </button>
+      </div>
+    );
+  }
+
   // ═════════ MENU ═════════
   if (screen === "menu") {
     const totalItems = ALL_DATA.length;
@@ -1604,9 +1929,44 @@ export default function App() {
             <svg className="logo-ring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="58" /></svg>
           </div>
           <div style={{ ...KICKER, color: C.faint, marginTop: 6 }}>
-            N2 / N1 · {totalItems} items{history.length > 0 ? ` · ${history.length} tests · avg ${avg}%` : ""}
+            N5 → N1 · {totalItems} items{history.length > 0 ? ` · ${history.length} tests · avg ${avg}%` : ""}
           </div>
         </header>
+
+        {/* LEARN MODE — primary CTA for newcomers */}
+        {(() => {
+          const totalCompleted = LEVELS.reduce((s, lvl) => s + (learnProgress[lvl.id]?.completed?.length || 0), 0);
+          const totalXp = LEVELS.reduce((s, lvl) => s + (learnProgress[lvl.id]?.xp || 0), 0);
+          return (
+            <button
+              onClick={() => setScreen("learn-levels")}
+              className="btn-hover"
+              style={{
+                width: "100%", marginBottom: wide ? 18 : 14,
+                background: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentHi} 100%)`,
+                color: "#fff", border: "none", borderRadius: 16,
+                padding: wide ? "22px 28px" : "20px 22px",
+                cursor: "pointer", textAlign: "left", fontFamily: FONT_LATIN,
+                boxShadow: "0 6px 20px -8px rgba(188,0,45,0.45), 0 2px 6px rgba(188,0,45,0.18)",
+                display: "flex", alignItems: "center", gap: 18,
+              }}
+            >
+              <div style={{ fontSize: wide ? 44 : 36, lineHeight: 1, flexShrink: 0 }}>🥋</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...KICKER, color: "rgba(255,255,255,0.78)", fontSize: 11, marginBottom: 4 }}>道場 · DOJO</div>
+                <div className="jp-display" style={{ fontSize: wide ? 24 : 20, fontWeight: 700, letterSpacing: "0.04em" }}>
+                  Begin training · 学ぶ
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.88, marginTop: 4 }}>
+                  {totalCompleted > 0
+                    ? `${totalCompleted} lessons · ${totalXp} XP — continue your path`
+                    : "Step-by-step lessons N5 → N1 — learn 5 items, then prove it"}
+                </div>
+              </div>
+              <IconChevRt size={20} style={{ opacity: 0.85, flexShrink: 0 }} />
+            </button>
+          );
+        })()}
 
         {bookmarks.size > 0 && (() => {
           const bookmarkedItems = ALL_DATA.filter(d => bookmarks.has(d.jp));
@@ -1881,16 +2241,29 @@ export default function App() {
     const pct = total > 0 ? Math.round((score / total) * 100) : 0;
     const passed = pct >= PASS_SCORE;
     const verdictColor = passed ? C.pass : C.accent;
-    const statsData = [
-      { label: "Correct",     value: `${score}/${total}` },
-      { label: "Best Streak", value: bestStreak },
-      { label: "Time",        value: formatTime((timerMin * 60 + timerSec) - timeLeft) },
-      { label: "Mistakes",    value: wrongList.length },
-    ];
+    const isLessonResult = !!learnContextRef.current;
+    const lessonLevel = learnContextRef.current?.level;
+    const xpEarned = score * 10 + (passed ? 50 : 0);  // mirrors storage logic
+    const statsData = isLessonResult
+      ? [
+          { label: "Correct",     value: `${score}/${total}` },
+          { label: "Best Streak", value: bestStreak },
+          { label: "XP Earned",   value: `+${xpEarned}` },
+          { label: "Mistakes",    value: wrongList.length },
+        ]
+      : [
+          { label: "Correct",     value: `${score}/${total}` },
+          { label: "Best Streak", value: bestStreak },
+          { label: "Time",        value: formatTime((timerMin * 60 + timerSec) - timeLeft) },
+          { label: "Mistakes",    value: wrongList.length },
+        ];
     return (
       <div style={PAGE}>
         {/* VERDICT */}
         <div className="pop-in" style={{ textAlign: "center", marginTop: wide ? 32 : 20, marginBottom: 28 }}>
+          {isLessonResult && passed && (
+            <div style={{ fontSize: 48, marginBottom: 8, animation: "popIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>🎉</div>
+          )}
           <div className="num count-up" style={{ fontSize: wide ? 96 : 72, fontWeight: 300, color: verdictColor, lineHeight: 1, letterSpacing: "-0.02em" }}>
             {pct}<span style={{ fontSize: "0.5em", color: C.muted, marginLeft: 4 }}>%</span>
           </div>
@@ -1898,7 +2271,9 @@ export default function App() {
             {passed ? "合格" : "不合格"}
           </div>
           <div style={{ ...KICKER, color: C.muted, marginTop: 6 }}>
-            {passed ? "Passed" : "Retry"}
+            {isLessonResult
+              ? (passed ? `Lesson Complete · +${xpEarned} XP` : "Try Again to Pass")
+              : (passed ? "Passed" : "Retry")}
           </div>
         </div>
 
@@ -1926,8 +2301,28 @@ export default function App() {
 
         {/* ACTIONS */}
         <div className="slide-up" style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button onClick={() => setScreen("menu")} className="btn-hover" style={secondaryBtn(wide, 1)}>Menu</button>
-          <button onClick={startQuiz} className="btn-hover" style={primaryBtn(wide, 2)}>{passed ? "Next Test" : "Retry"} <IconChevRt size={14} /></button>
+          {isLessonResult ? (
+            <>
+              <button onClick={() => { learnContextRef.current = null; setScreen("learn-lessons"); }} className="btn-hover" style={secondaryBtn(wide, 1)}>Lesson List</button>
+              {passed ? (
+                <button onClick={() => {
+                  // Auto-advance to next lesson if available
+                  const lessons = getLessonsForLevel(lessonLevel);
+                  const completedSet = new Set(loadLearnProgress()[lessonLevel]?.completed || []);
+                  const next = lessons.find(l => !completedSet.has(l.id));
+                  if (next) startLesson(next);
+                  else { learnContextRef.current = null; setScreen("learn-lessons"); }
+                }} className="btn-hover" style={primaryBtn(wide, 2)}>Next Lesson <IconChevRt size={14} /></button>
+              ) : (
+                <button onClick={beginLessonQuiz} className="btn-hover" style={primaryBtn(wide, 2)}>Retry <IconChevRt size={14} /></button>
+              )}
+            </>
+          ) : (
+            <>
+              <button onClick={() => setScreen("menu")} className="btn-hover" style={secondaryBtn(wide, 1)}>Menu</button>
+              <button onClick={startQuiz} className="btn-hover" style={primaryBtn(wide, 2)}>{passed ? "Next Test" : "Retry"} <IconChevRt size={14} /></button>
+            </>
+          )}
         </div>
       </div>
     );

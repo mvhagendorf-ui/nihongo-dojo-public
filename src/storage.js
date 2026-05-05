@@ -2,6 +2,31 @@ const HISTORY_KEY = "nihongo_dojo_history";
 const SRS_KEY = "nihongo_dojo_srs";
 const BOOKMARKS_KEY = "nihongo_dojo_bookmarks";
 const CUSTOM_QUIZZES_KEY = "nihongo_dojo_custom_quizzes";
+const LEARN_KEY = "nihongo_dojo_learn_progress";
+
+// ─── LEARN MODE PROGRESS ───
+// Shape: { N5: { completed: ["lesson_1", ...], xp: 250, lastLesson: 5 }, N4: {...}, ... }
+export function loadLearnProgress() {
+  try { return JSON.parse(localStorage.getItem(LEARN_KEY)) || {}; }
+  catch { return {}; }
+}
+export function saveLearnProgress(progress) {
+  try { localStorage.setItem(LEARN_KEY, JSON.stringify(progress)); } catch {}
+}
+export function markLessonCompleted(level, lessonId, score, total) {
+  const progress = loadLearnProgress();
+  if (!progress[level]) progress[level] = { completed: [], xp: 0, scores: {} };
+  if (!progress[level].completed.includes(lessonId)) progress[level].completed.push(lessonId);
+  progress[level].scores = progress[level].scores || {};
+  // Keep best score per lesson
+  const prev = progress[level].scores[lessonId]?.score || 0;
+  if (score > prev) progress[level].scores[lessonId] = { score, total, date: Date.now() };
+  // XP: 10 per correct + 50 bonus for first-time lesson completion
+  const wasNew = !progress[level].scores[lessonId] || progress[level].scores[lessonId]?.score === 0;
+  progress[level].xp = (progress[level].xp || 0) + score * 10 + (wasNew ? 50 : 0);
+  saveLearnProgress(progress);
+  return progress;
+}
 
 export function loadCustomQuizzes() {
   try { return JSON.parse(localStorage.getItem(CUSTOM_QUIZZES_KEY)) || []; }
