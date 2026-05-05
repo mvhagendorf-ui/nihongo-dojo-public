@@ -123,6 +123,35 @@ const MASCOT_ASSETS = {
   celebrating: "/mascot/daruma-cheering.svg",    // alias — full joyful
 };
 
+// Image-only daruma — used inside custom layouts where we want our own bubble/card design
+function DojoMascotBig({ state = "idle", size = 96 }) {
+  const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊", sad: "🥺" };
+  const assetSrc = MASCOT_ASSETS[state] || MASCOT_ASSETS.idle;
+  const [imgError, setImgError] = useState(false);
+  const lastSrcRef = useRef(assetSrc);
+  if (lastSrcRef.current !== assetSrc) {
+    lastSrcRef.current = assetSrc;
+    if (imgError) setImgError(false);
+  }
+  return (
+    <div style={{
+      width: size, height: size, flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      filter: "drop-shadow(0 4px 8px rgba(188,0,45,0.20))",
+      animation: "logoFloat 4s ease-in-out infinite",
+    }}>
+      {!imgError ? (
+        <img
+          src={assetSrc}
+          alt={`Daruma ${state}`}
+          onError={() => setImgError(true)}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
+      ) : <span style={{ fontSize: size * 0.65, lineHeight: 1 }}>{stateEmoji[state] || "🥋"}</span>}
+    </div>
+  );
+}
+
 function DojoMascot({ state = "idle", message, side = "right", size = 64 }) {
   const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊", sad: "🥺" };
   const assetSrc = MASCOT_ASSETS[state] || MASCOT_ASSETS.idle;
@@ -1902,12 +1931,12 @@ export default function App() {
     const isLast  = studyIdx === totalCards - 1;
     const progressPct = ((studyIdx + 1) / totalCards) * 100;
 
-    // Mascot state varies through the lesson
+    // Mascot state varies through the lesson — always show a message at top
     let mascotState, mascotMsg;
     if (isFirst)       { mascotState = "happy";       mascotMsg = pickMessage("studyIntro"); }
     else if (isLast)   { mascotState = "thinking";    mascotMsg = pickMessage("studyLast"); }
     else if (studyIdx >= Math.floor(totalCards / 2)) { mascotState = "encouraging"; mascotMsg = pickMessage("studyMid"); }
-    else               { mascotState = "idle";        mascotMsg = null; }
+    else               { mascotState = "idle";        mascotMsg = "Card " + (studyIdx + 1) + " — keep going!"; }
 
     const advance = () => {
       if (isLast) beginLessonQuiz();
@@ -1928,7 +1957,7 @@ export default function App() {
         </div>
 
         {/* Progress bar — segmented */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 18, height: 6 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 16, height: 6 }}>
           {lesson.items.map((_, i) => (
             <div key={i} style={{
               flex: 1, height: "100%", borderRadius: 3,
@@ -1936,6 +1965,29 @@ export default function App() {
               transition: "background 0.3s",
             }} />
           ))}
+        </div>
+
+        {/* DOJO MASCOT — sensei greeting at top of every card */}
+        <div className="fade-in" key={`mascot_${studyIdx}`} style={{
+          marginBottom: 16,
+          background: "linear-gradient(135deg, #FEF7F0 0%, #FCEFDF 100%)",
+          border: `1px solid rgba(188,0,45,0.18)`, borderRadius: 16,
+          padding: wide ? "14px 18px" : "12px 14px",
+          display: "flex", alignItems: "center", gap: wide ? 16 : 12,
+          boxShadow: "0 2px 8px -2px rgba(188,0,45,0.10)",
+          position: "relative", overflow: "hidden",
+        }}>
+          {/* faint torii silhouette in background corner */}
+          <div style={{ position: "absolute", right: -10, bottom: -8, fontSize: 60, opacity: 0.06, pointerEvents: "none" }}>⛩</div>
+
+          <DojoMascotBig state={mascotState} size={wide ? 96 : 80} />
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...KICKER, fontSize: 9, color: C.accent, marginBottom: 4 }}>達磨先生 · Daruma-sensei</div>
+            <div className="jp" style={{ fontSize: wide ? 16 : 15, fontWeight: 600, color: C.ink, lineHeight: 1.45 }}>
+              {mascotMsg}
+            </div>
+          </div>
         </div>
 
         {/* THE CARD */}
@@ -1998,13 +2050,6 @@ export default function App() {
 
           <KanjiRadicals word={it.jp} />
         </div>
-
-        {/* MASCOT */}
-        {mascotMsg && (
-          <div style={{ marginBottom: 14, animation: "fadeIn 0.4s ease-out both" }}>
-            <DojoMascot state={mascotState} message={mascotMsg} side="left" size={56} />
-          </div>
-        )}
 
         {/* ACTION BAR */}
         <div style={{ display: "flex", gap: 10 }}>
