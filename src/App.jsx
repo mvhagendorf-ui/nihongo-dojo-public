@@ -1790,7 +1790,60 @@ function CustomQuizCreateModal({ onClose, onSaved }) {
 }
 
 // ─────────── APP ───────────
+// Floating scroll-to-top button — mounted as a vanilla DOM node from useScrollToTopButton.
+// One install, works on every screen regardless of App's early returns.
+function useScrollToTopButton() {
+  useEffect(() => {
+    const btn = document.createElement("button");
+    btn.setAttribute("aria-label", "Scroll to top");
+    btn.setAttribute("title", "Top · 上へ");
+    btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>`;
+    Object.assign(btn.style, {
+      position: "fixed",
+      bottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+      right: "calc(20px + env(safe-area-inset-right, 0px))",
+      width: "48px", height: "48px",
+      borderRadius: "50%",
+      background: C.accent, color: "#fff", border: "none",
+      cursor: "pointer",
+      boxShadow: "0 6px 18px rgba(188,0,45,0.40), 0 2px 4px rgba(0,0,0,0.12)",
+      display: "none",
+      alignItems: "center", justifyContent: "center",
+      zIndex: "200",
+      transition: "transform 0.15s ease, opacity 0.2s ease",
+      opacity: "0",
+      transform: "translateY(8px)",
+    });
+    btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+    btn.addEventListener("mouseenter", () => { btn.style.transform = "translateY(-2px) scale(1.05)"; });
+    btn.addEventListener("mouseleave", () => { btn.style.transform = "translateY(0) scale(1)"; });
+    document.body.appendChild(btn);
+
+    let shown = false;
+    const onScroll = () => {
+      const should = window.scrollY > 300;
+      if (should === shown) return;
+      shown = should;
+      if (should) {
+        btn.style.display = "flex";
+        // Next frame to let display take effect, then animate in
+        requestAnimationFrame(() => { btn.style.opacity = "1"; btn.style.transform = "translateY(0)"; });
+      } else {
+        btn.style.opacity = "0"; btn.style.transform = "translateY(8px)";
+        setTimeout(() => { if (!shown) btn.style.display = "none"; }, 200);
+      }
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      btn.remove();
+    };
+  }, []);
+}
+
 export default function App() {
+  useScrollToTopButton();
   const wide = useIsWide();
   const PAGE = { position: "relative", minHeight: "100dvh", padding: wide ? "32px 40px 48px" : "18px 18px 40px", maxWidth: wide ? 1180 : 560, margin: "0 auto", color: C.ink, fontFamily: FONT_LATIN };
 
