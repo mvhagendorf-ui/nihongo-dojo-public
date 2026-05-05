@@ -35,6 +35,38 @@ const FONT_NUM = "'JetBrains Mono', 'SF Mono', Menlo, monospace";
 const KICKER = { fontFamily: FONT_LATIN, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 11, color: C.muted };
 const JP_LABEL = { fontFamily: FONT_JP, fontSize: 14, fontWeight: 700, color: C.faint, letterSpacing: "0.04em", textTransform: "none" };
 
+// ─────────── DOJO LOCKED LESSON — WAX SEAL ───────────
+// Replaces the 🔒 emoji on locked lessons with a wax-seal disk bearing 封 (sealed).
+// Inline component with no deps.
+const WAX = { red: "#BC002D", redDeep: "#8E0021", redLight: "#D5294F", wax: "#FFE4D6" };
+function WaxSeal({ size = 40 }) {
+  return (
+    <div aria-hidden="true" style={{ width: size, height: size, position: "relative", flexShrink: 0 }}>
+      {/* drop shadow */}
+      <div style={{ position: "absolute", left: size * 0.11, top: size * 0.14, width: size * 0.78, height: size * 0.78, borderRadius: "50%", background: "rgba(20,20,20,0.18)", filter: "blur(3px)" }} />
+      {/* wax disk */}
+      <div style={{
+        position: "absolute", left: size * 0.07, top: size * 0.07, width: size * 0.86, height: size * 0.86, borderRadius: "50%",
+        background: `radial-gradient(circle at 35% 30%, ${WAX.redLight} 0%, ${WAX.red} 55%, ${WAX.redDeep} 100%)`,
+        boxShadow: "inset -2px -3px 5px rgba(0,0,0,0.25), inset 2px 2px 3px rgba(255,255,255,0.18)",
+        display: "grid", placeItems: "center",
+      }}>
+        <span style={{
+          fontFamily: "'Noto Serif JP','Noto Sans JP',serif",
+          fontWeight: 700, fontSize: size * 0.45,
+          color: WAX.wax, textShadow: "0 1px 0 rgba(0,0,0,0.25)", lineHeight: 1,
+        }}>封</span>
+      </div>
+      {/* drip notches */}
+      <svg width={size} height={size} viewBox="0 0 56 56" style={{ position: "absolute", inset: 0 }}>
+        <path d="M 28 4 l -4 4 l 4 2 z"  fill={WAX.red} opacity="0.85" />
+        <path d="M 50 28 l -4 -4 l -2 4 z" fill={WAX.red} opacity="0.7" />
+        <path d="M 6 30 l 4 -3 l 2 4 z"   fill={WAX.red} opacity="0.7" />
+      </svg>
+    </div>
+  );
+}
+
 // ─────────── DOJO LEARN MODE — LEVELS & BELTS ───────────
 // Each JLPT level maps to a martial-arts belt. Lessons are auto-chunked into
 // groups of 5 mixed grammar+vocab items per level.
@@ -1798,15 +1830,15 @@ export default function App() {
           marginBottom: 22,
           borderRadius: 18,
           overflow: "hidden",
-          backgroundImage: `url('/dojo/bg_doujou.jpg')`,
+          backgroundImage: `url('/dojo/training_hall.webp')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           boxShadow: "0 8px 28px -10px rgba(80,60,30,0.40), 0 2px 6px rgba(0,0,0,0.10)",
         }}>
-          {/* layered gradient — vignette top + heavy bottom for text */}
+          {/* gradient — light overlay so the cartoon dōjō stays visible, dark only at bottom for text */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.20) 50%, rgba(0,0,0,0.78) 100%)",
+            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(20,15,8,0.72) 100%)",
           }} />
           {/* red accent corner stamp */}
           <div style={{
@@ -2009,9 +2041,13 @@ export default function App() {
                     display: "flex", alignItems: "center", gap: 14,
                   }}
                 >
-                  <div style={{ flex: "0 0 auto", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: isCompleted ? C.pass : isLocked ? C.border : C.accentSoft, color: isCompleted ? "#fff" : isLocked ? C.faint : C.accent, fontWeight: 700 }}>
-                    {isCompleted ? <IconCheck size={20} /> : isLocked ? "🔒" : <span className="num" style={{ fontSize: 14 }}>{lesson.number}</span>}
-                  </div>
+                  {isLocked ? (
+                    <WaxSeal size={44} />
+                  ) : (
+                    <div style={{ flex: "0 0 auto", width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: isCompleted ? C.pass : C.accentSoft, color: isCompleted ? "#fff" : C.accent, fontWeight: 700 }}>
+                      {isCompleted ? <IconCheck size={20} /> : <span className="num" style={{ fontSize: 14 }}>{lesson.number}</span>}
+                    </div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: isLocked ? C.faint : C.ink }}>
                       Lesson {lesson.number}
@@ -2210,23 +2246,22 @@ export default function App() {
           </button>
         </div>
 
-        {/* SECONDARY NAV — Back + final-card hint */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button onClick={retreat} disabled={isFirst} className={isFirst ? "" : "btn-hover"} style={{
-            flex: "0 0 auto", padding: "10px 16px",
-            background: "transparent",
-            color: isFirst ? C.faint : C.muted,
-            border: `1px solid ${C.border}`, borderRadius: 10,
-            cursor: isFirst ? "not-allowed" : "pointer",
-            fontFamily: FONT_LATIN, fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase",
-            display: "inline-flex", alignItems: "center", gap: 6,
-          }}>
-            <IconArrowL size={12} /> Back
-          </button>
-          <div style={{ flex: 1, ...KICKER, fontSize: 11, color: C.faint, textAlign: "right" }}>
-            {isLast ? "Rate this card to begin the quiz →" : "Rate to continue →"}
+        {/* SECONDARY NAV — Back arrow only */}
+        {!isFirst && (
+          <div style={{ display: "flex" }}>
+            <button onClick={retreat} className="btn-hover" style={{
+              padding: "10px 16px",
+              background: "transparent",
+              color: C.muted,
+              border: `1px solid ${C.border}`, borderRadius: 10,
+              cursor: "pointer",
+              fontFamily: FONT_LATIN, fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase",
+              display: "inline-flex", alignItems: "center", gap: 6,
+            }}>
+              <IconArrowL size={12} /> Previous Card
+            </button>
           </div>
-        </div>
+        )}
       </div>
     );
   }
