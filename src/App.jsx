@@ -375,6 +375,16 @@ function Furigana({ jp, reading, style, className }) {
 // Strips a parenthetical reading off jp, for places that just want the clean text (TTS, comparisons display)
 function cleanJp(jp) { return parseJpReading(jp).jp; }
 
+// Picks the best string to feed to the speech engine.
+// Single kanji like 頭 are read on'yomi by default ("tou") instead of kun'yomi ("atama"),
+// so when an explicit hiragana reading is provided, prefer it — the engine speaks kana unambiguously.
+function speechSrc(jp, reading) {
+  if (reading && /^[぀-ゟ゠-ヿ〜ー・]+$/.test(reading)) return reading;
+  const parsed = parseJpReading(jp);
+  if (parsed.reading) return parsed.reading;
+  return parsed.jp;
+}
+
 // Strips ALL inline `（kana）` annotations from a string (for TTS — otherwise the engine reads them aloud).
 function stripFurigana(text) {
   if (!text) return text;
@@ -635,9 +645,10 @@ function speak(text, rate) {
   speechSynthesis.speak(u);
 }
 
-function SpeakBtn({ text, size = 14 }) {
+function SpeakBtn({ text, reading, size = 14 }) {
+  const speakWhat = reading ? speechSrc(text, reading) : text;
   return (
-    <button onClick={(e) => { e.stopPropagation(); speak(text); }} aria-label="Play audio" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: C.muted, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, verticalAlign: "middle" }} className="btn-hover" onMouseEnter={e => e.currentTarget.style.color = C.ink} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+    <button onClick={(e) => { e.stopPropagation(); speak(speakWhat); }} aria-label="Play audio" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: C.muted, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, verticalAlign: "middle" }} className="btn-hover" onMouseEnter={e => e.currentTarget.style.color = C.ink} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
       <IconVolume size={size} />
     </button>
   );
@@ -975,7 +986,7 @@ function WrongItem({ w, isLast }) {
       <div style={{ padding: "14px 0", borderBottom: isLast ? "none" : `1px solid ${C.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
           <Chip tone="accent">{CATEGORIES[w.cat] || "Quiz"} · {w.type}</Chip>
-          {w.source?.jp && <SpeakBtn text={cleanJp(w.source.jp)} size={14} />}
+          {w.source?.jp && <SpeakBtn text={cleanJp(w.source.jp)} reading={w.source?.reading} size={14} />}
         </div>
         <div style={{ marginTop: 10, fontSize: 15, color: C.inkDim, lineHeight: 1.5, fontWeight: 500 }}>
           <span className="jp">{w.prompt}</span>
@@ -1004,7 +1015,7 @@ function WrongItem({ w, isLast }) {
     <div style={{ padding: "14px 0", borderBottom: isLast ? "none" : `1px solid ${C.border}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <Chip tone="accent">{CATEGORIES[w.cat]}{w.num ? ` · #${w.num}` : ""}</Chip>
-        <SpeakBtn text={cleanJp(w.jp)} size={14} />
+        <SpeakBtn text={cleanJp(w.jp)} reading={w.reading} size={14} />
       </div>
       <div className="jp" style={{ color: C.ink, fontWeight: 700, fontSize: 22, marginTop: 8, letterSpacing: "0.02em" }}><Furigana jp={w.jp} reading={w.reading} /></div>
       <div style={{ color: C.inkDim, fontSize: 15, marginTop: 4 }}>{w.en}</div>
@@ -1191,34 +1202,37 @@ const KANA_DATA = {
 
 function KanaCell({ cell, onClick }) {
   if (!cell) {
-    return <div style={{ aspectRatio: "1", background: "transparent" }} aria-hidden="true" />;
+    return <div style={{ height: 56, background: "transparent" }} aria-hidden="true" />;
   }
   return (
     <button
       onClick={() => onClick(cell.k)}
       className="btn-hover"
       style={{
-        aspectRatio: "1",
-        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
-        padding: 4, cursor: "pointer",
+        height: 56,
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+        padding: "2px 2px", cursor: "pointer",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         fontFamily: FONT_LATIN,
       }}
     >
-      <span className="jp-display" style={{ fontSize: "min(7vw, 28px)", lineHeight: 1, color: C.ink, fontWeight: 500 }}>{cell.k}</span>
-      <span className="num" style={{ fontSize: 10, color: C.muted, marginTop: 4, letterSpacing: "0.04em" }}>{cell.r}</span>
+      <span className="jp-display" style={{ fontSize: 22, lineHeight: 1, color: C.ink, fontWeight: 500 }}>{cell.k}</span>
+      <span className="num" style={{ fontSize: 9, color: C.muted, marginTop: 3, letterSpacing: "0.04em" }}>{cell.r}</span>
     </button>
   );
 }
 
 function KanaSection({ title, en, rows, cols, onCellClick }) {
+  // JapanDict-style compact grid — cap the column width so cells stay tight on wide screens
+  const maxCellWidth = 64;
+  const gridMaxWidth = cols * maxCellWidth + (cols - 1) * 4;
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
         <span className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{title}</span>
         <span style={{ ...KICKER, fontSize: 10, color: C.muted }}>{en}</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 4, maxWidth: gridMaxWidth }}>
         {rows.flatMap((row, ri) => row.map((cell, ci) => (
           <KanaCell key={`${ri}-${ci}`} cell={cell} onClick={onCellClick} />
         )))}
@@ -2151,7 +2165,7 @@ export default function App() {
           const core = findCoreInEx(cleanEx, extractCores(s.q.jp));
           speak(core ? cleanEx.replace(core, "・・・") : cleanEx);
         } else {
-          speak(cleanJp(s.q.jp));
+          speak(speechSrc(s.q.jp, s.q.reading));
         }
       }
     };
@@ -2547,7 +2561,7 @@ export default function App() {
       if (cardReaction) return; // ignore double-clicks while reaction plays
       setStudyRatings(prev => ({ ...prev, [studyIdx]: rating }));
       // Always play the headword audio so user hears pronunciation reinforced
-      try { speak(cleanJp(it.jp)); } catch {}
+      try { speak(speechSrc(it.jp, it.reading)); } catch {}
       setCardReaction({ rating, key: studyIdx });
       // I Know → snappy auto-advance; Don't Know → linger so the user can study
       if (rating === "know") {
@@ -2637,7 +2651,7 @@ export default function App() {
               <Furigana jp={it.jp} reading={it.reading} />
             </div>
             <div style={{ marginTop: 12 }}>
-              <SpeakBtn text={cleanJp(it.jp)} size={26} />
+              <SpeakBtn text={cleanJp(it.jp)} reading={it.reading} size={26} />
             </div>
             <div style={{ fontSize: wide ? 22 : 19, color: C.inkDim, marginTop: 14, fontWeight: 500 }}>{it.en}</div>
           </div>
@@ -2797,7 +2811,7 @@ export default function App() {
         {cardReaction?.rating === "dontKnow" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => speak(cleanJp(it.jp))} className="btn-hover" style={{
+              <button onClick={() => speak(speechSrc(it.jp, it.reading))} className="btn-hover" style={{
                 flex: 1, padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
                 background: "transparent", color: C.ink,
                 border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer",
@@ -2806,7 +2820,7 @@ export default function App() {
               }}>
                 <IconVolume size={14} /> Listen
               </button>
-              <button onClick={() => speak(cleanJp(it.jp), 0.5)} className="btn-hover" style={{
+              <button onClick={() => speak(speechSrc(it.jp, it.reading), 0.5)} className="btn-hover" style={{
                 flex: 1, padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
                 background: "transparent", color: C.ink,
                 border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer",
@@ -3534,7 +3548,7 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="jp" style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "0.02em" }}>
-                            <Furigana jp={sourceJp} reading={q.source.reading} /> <SpeakBtn text={cleanJp(sourceJp)} size={16} />
+                            <Furigana jp={sourceJp} reading={q.source.reading} /> <SpeakBtn text={cleanJp(sourceJp)} reading={q.source?.reading} size={16} />
                           </div>
                           {q.source.en && <div style={{ color: C.inkDim, fontSize: 14, marginTop: 4 }}>{q.source.en}</div>}
                         </div>
@@ -3612,7 +3626,7 @@ export default function App() {
               ) : (
                 <>
                   <div className="jp-display" style={{ fontSize: wide ? 56 : 42, fontWeight: 500, color: C.ink, lineHeight: 1.4, letterSpacing: "0.05em" }}>
-                    <Furigana jp={q.jp} reading={q.reading} /> <SpeakBtn text={cleanJp(q.jp)} size={wide ? 26 : 22} />
+                    <Furigana jp={q.jp} reading={q.reading} /> <SpeakBtn text={cleanJp(q.jp)} reading={q.reading} size={wide ? 26 : 22} />
                   </div>
                   {q.conn && (
                     <div style={{ marginTop: 22, display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 16px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
@@ -3682,7 +3696,7 @@ export default function App() {
                 <KickerLabel style={{ color: C.pass, marginBottom: 12 }}>Answer</KickerLabel>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="jp" style={{ fontSize: 36, fontWeight: 700, color: C.ink, letterSpacing: "0.02em", lineHeight: 1.4 }}><Furigana jp={q.jp} reading={q.reading} /> <SpeakBtn text={cleanJp(q.jp)} size={22} /></div>
+                    <div className="jp" style={{ fontSize: 36, fontWeight: 700, color: C.ink, letterSpacing: "0.02em", lineHeight: 1.4 }}><Furigana jp={q.jp} reading={q.reading} /> <SpeakBtn text={cleanJp(q.jp)} reading={q.reading} size={22} /></div>
                     <div style={{ color: C.inkDim, fontSize: 18, marginTop: 8 }}>{q.en}</div>
                   </div>
                   <button
