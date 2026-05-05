@@ -1492,6 +1492,7 @@ export default function App() {
   const [learnLevel, setLearnLevel] = useState(null);    // e.g. "N5"
   const [learnLesson, setLearnLesson] = useState(null);  // active lesson object
   const [studyIdx, setStudyIdx] = useState(0);           // which card the user is studying (0-4)
+  const [studyRatings, setStudyRatings] = useState({});  // { itemIdx: "know" | "dontKnow" } — used to weight quiz emphasis
   const learnContextRef = useRef(null);                  // tracks when a quiz is launched FROM Learn mode
   const [customOpen, setCustomOpen] = useState(false);
   const [customCreateOpen, setCustomCreateOpen] = useState(false);
@@ -1598,15 +1599,25 @@ export default function App() {
     if (!lesson || !lesson.items || lesson.items.length === 0) return;
     setLearnLesson(lesson);
     setStudyIdx(0);
+    setStudyRatings({});
     learnContextRef.current = { level: lesson.level, lessonId: lesson.id };
     setScreen("learn-study");
   }, []);
 
   // Called from study screen when user clicks "Begin practice" — kicks off the quiz.
+  // Sorts items so anything the user marked "dontKnow" gets quizzed first while it's fresh.
   const beginLessonQuiz = useCallback(() => {
     const lesson = learnLesson;
     if (!lesson) return;
-    const items = lesson.items.map((it, i) => ({ ...it, _type: pickQuestionType(it), num: i + 1 }));
+    const itemsWithRating = lesson.items.map((it, i) => ({
+      it,
+      rating: studyRatings[i],  // "know" | "dontKnow" | undefined
+      origIdx: i,
+    }));
+    // Sort: dontKnow first, then unrated, then know
+    const ratingWeight = { dontKnow: 0, undefined: 1, know: 2 };
+    itemsWithRating.sort((a, b) => (ratingWeight[a.rating] ?? 1) - (ratingWeight[b.rating] ?? 1));
+    const items = itemsWithRating.map((entry, i) => ({ ...entry.it, _type: pickQuestionType(entry.it), num: i + 1 }));
     setQuestions(items);
     setCurrent(0); setSelected(null); setScore(0); setTotal(0);
     setStreak(0); setBestStreak(0); setWrongList([]); setRetryQueue([]);
@@ -1938,11 +1949,18 @@ export default function App() {
     else if (studyIdx >= Math.floor(totalCards / 2)) { mascotState = "encouraging"; mascotMsg = pickMessage("studyMid"); }
     else               { mascotState = "idle";        mascotMsg = "Card " + (studyIdx + 1) + " — keep going!"; }
 
-    const advance = () => {
+    // Pick label set based on level — beginners (N5/N4) get English labels
+    const isBeginner = lesson.level === "N5" || lesson.level === "N4";
+    const labelEx = isBeginner ? "Example" : "例";
+    const labelConn = isBeginner ? "Pattern" : "接続";
+
+    const rateAndAdvance = (rating) => {
+      setStudyRatings(prev => ({ ...prev, [studyIdx]: rating }));
       if (isLast) beginLessonQuiz();
       else setStudyIdx(i => i + 1);
     };
     const retreat = () => { if (!isFirst) setStudyIdx(i => i - 1); };
+    const currentRating = studyRatings[studyIdx];
 
     return (
       <div style={PAGE}>
@@ -1967,25 +1985,38 @@ export default function App() {
           ))}
         </div>
 
-        {/* DOJO MASCOT — sensei greeting at top of every card */}
+        {/* DOJO MASCOT — sensei greeting at top, no card box, floats naturally */}
         <div className="fade-in" key={`mascot_${studyIdx}`} style={{
-          marginBottom: 16,
-          background: "linear-gradient(135deg, #FEF7F0 0%, #FCEFDF 100%)",
-          border: `1px solid rgba(188,0,45,0.18)`, borderRadius: 16,
-          padding: wide ? "14px 18px" : "12px 14px",
+          marginBottom: 18,
           display: "flex", alignItems: "center", gap: wide ? 16 : 12,
-          boxShadow: "0 2px 8px -2px rgba(188,0,45,0.10)",
-          position: "relative", overflow: "hidden",
+          padding: "0 4px",
         }}>
-          {/* faint torii silhouette in background corner */}
-          <div style={{ position: "absolute", right: -10, bottom: -8, fontSize: 60, opacity: 0.06, pointerEvents: "none" }}>⛩</div>
-
-          <DojoMascotBig state={mascotState} size={wide ? 96 : 80} />
+          <DojoMascotBig state={mascotState} size={wide ? 110 : 92} />
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...KICKER, fontSize: 9, color: C.accent, marginBottom: 4 }}>達磨先生 · Daruma-sensei</div>
-            <div className="jp" style={{ fontSize: wide ? 16 : 15, fontWeight: 600, color: C.ink, lineHeight: 1.45 }}>
-              {mascotMsg}
+            <div style={{
+              fontFamily: FONT_LATIN, fontWeight: 700,
+              letterSpacing: "0.10em", textTransform: "uppercase",
+              fontSize: 13, color: C.accent, marginBottom: 6,
+            }}>達磨先生 · Daruma-sensei</div>
+            <div style={{
+              position: "relative",
+              background: "#FFFFFF", border: "1px solid rgba(188,0,45,0.20)",
+              borderRadius: 14, padding: "12px 16px",
+              fontSize: wide ? 16 : 15, fontWeight: 600, color: C.ink,
+              lineHeight: 1.45,
+              boxShadow: "0 2px 6px rgba(188,0,45,0.10)",
+            }} className="jp">
+              {/* tail pointing left toward daruma */}
+              <div style={{
+                position: "absolute", left: -7, bottom: 14,
+                width: 14, height: 14,
+                background: "#FFFFFF",
+                border: "1px solid rgba(188,0,45,0.20)",
+                borderTop: "none", borderRight: "none",
+                transform: "rotate(45deg)",
+              }} />
+              <span style={{ position: "relative" }}>{mascotMsg}</span>
             </div>
           </div>
         </div>
@@ -2019,7 +2050,7 @@ export default function App() {
           {it.conn && (
             <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
               <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8, padding: "6px 14px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
-                <span style={JP_LABEL}>接続</span>
+                <span style={isBeginner ? { ...KICKER, fontSize: 10, color: C.muted } : JP_LABEL}>{labelConn}</span>
                 <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={it.conn} /></span>
               </div>
             </div>
@@ -2028,12 +2059,12 @@ export default function App() {
           {it.ex && (
             <div style={{ marginTop: 18, padding: "12px 14px", background: C.elevated, borderLeft: `3px solid ${C.accent}`, borderRadius: 8 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span style={JP_LABEL}>例</span>
+                <span style={isBeginner ? { ...KICKER, fontSize: 10, color: C.muted, flexShrink: 0 } : { ...JP_LABEL, flexShrink: 0 }}>{labelEx}</span>
                 <span className="jp" style={{ flex: 1, fontSize: 16, color: C.ink, fontWeight: 600, lineHeight: 1.55 }}><FuriganaSentence text={it.ex} /></span>
                 <SpeakBtn text={stripFurigana(it.ex)} size={14} />
               </div>
               {it.exEn && (
-                <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic", marginTop: 5, marginLeft: 26 }}>{it.exEn}</div>
+                <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic", marginTop: 5, marginLeft: isBeginner ? 60 : 26 }}>{it.exEn}</div>
               )}
             </div>
           )}
@@ -2051,30 +2082,50 @@ export default function App() {
           <KanjiRadicals word={it.jp} />
         </div>
 
-        {/* ACTION BAR */}
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={retreat} disabled={isFirst} className={isFirst ? "" : "btn-hover"} style={{
-            flex: "0 0 auto", padding: "14px 18px",
-            background: isFirst ? C.mutedBg : "transparent",
-            color: isFirst ? C.faint : C.inkDim,
-            border: `1px solid ${C.border}`, borderRadius: 12,
-            cursor: isFirst ? "not-allowed" : "pointer",
-            fontFamily: FONT_LATIN, fontSize: 13, fontWeight: 600,
-            display: "inline-flex", alignItems: "center", gap: 6,
-          }}>
-            <IconArrowL size={14} /> Back
-          </button>
-          <button onClick={advance} className="btn-hover" style={{
-            flex: 1, padding: "14px 18px",
-            fontSize: 14, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase",
-            background: isLast ? C.pass : C.accent, color: "#fff",
-            border: `1px solid ${isLast ? C.pass : C.accent}`, borderRadius: 12, cursor: "pointer",
+        {/* RATING BAR — Don't Know / I Know — both advance, rating informs quiz emphasis */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <button onClick={() => rateAndAdvance("dontKnow")} className="btn-hover" style={{
+            flex: 1, padding: "16px 18px",
+            fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+            background: currentRating === "dontKnow" ? C.accent : "#FFF5F6",
+            color: currentRating === "dontKnow" ? "#fff" : C.accent,
+            border: `2px solid ${C.accent}`, borderRadius: 14, cursor: "pointer",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
             fontFamily: FONT_LATIN,
-            boxShadow: isLast ? `0 4px 14px -4px ${C.passLine}` : `0 4px 14px -4px ${C.accentLine}`,
+            boxShadow: currentRating === "dontKnow" ? `0 4px 14px -4px ${C.accentLine}` : "none",
           }}>
-            {isLast ? "Begin Practice Quiz" : "I Know This"} <IconChevRt size={14} />
+            <IconX size={16} /> Don't Know
           </button>
+          <button onClick={() => rateAndAdvance("know")} className="btn-hover" style={{
+            flex: 1, padding: "16px 18px",
+            fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+            background: currentRating === "know" ? C.pass : "#F0FAF4",
+            color: currentRating === "know" ? "#fff" : C.pass,
+            border: `2px solid ${C.pass}`, borderRadius: 14, cursor: "pointer",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+            fontFamily: FONT_LATIN,
+            boxShadow: currentRating === "know" ? `0 4px 14px -4px ${C.passLine}` : "none",
+          }}>
+            <IconCheck size={16} /> I Know
+          </button>
+        </div>
+
+        {/* SECONDARY NAV — Back + final-card hint */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={retreat} disabled={isFirst} className={isFirst ? "" : "btn-hover"} style={{
+            flex: "0 0 auto", padding: "10px 16px",
+            background: "transparent",
+            color: isFirst ? C.faint : C.muted,
+            border: `1px solid ${C.border}`, borderRadius: 10,
+            cursor: isFirst ? "not-allowed" : "pointer",
+            fontFamily: FONT_LATIN, fontSize: 12, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase",
+            display: "inline-flex", alignItems: "center", gap: 6,
+          }}>
+            <IconArrowL size={12} /> Back
+          </button>
+          <div style={{ flex: 1, ...KICKER, fontSize: 11, color: C.faint, textAlign: "right" }}>
+            {isLast ? "Rate this card to begin the quiz →" : "Rate to continue →"}
+          </div>
         </div>
       </div>
     );
