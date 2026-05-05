@@ -1202,37 +1202,34 @@ const KANA_DATA = {
 
 function KanaCell({ cell, onClick }) {
   if (!cell) {
-    return <div style={{ height: 56, background: "transparent" }} aria-hidden="true" />;
+    return <div style={{ height: 60, background: "transparent" }} aria-hidden="true" />;
   }
   return (
     <button
       onClick={() => onClick(cell.k)}
       className="btn-hover"
       style={{
-        height: 56,
+        height: 60,
         background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
         padding: "2px 2px", cursor: "pointer",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         fontFamily: FONT_LATIN,
       }}
     >
-      <span className="jp-display" style={{ fontSize: 22, lineHeight: 1, color: C.ink, fontWeight: 500 }}>{cell.k}</span>
+      <span className="jp-display" style={{ fontSize: 24, lineHeight: 1, color: C.ink, fontWeight: 500 }}>{cell.k}</span>
       <span className="num" style={{ fontSize: 9, color: C.muted, marginTop: 3, letterSpacing: "0.04em" }}>{cell.r}</span>
     </button>
   );
 }
 
 function KanaSection({ title, en, rows, cols, onCellClick }) {
-  // JapanDict-style compact grid — cap the column width so cells stay tight on wide screens
-  const maxCellWidth = 64;
-  const gridMaxWidth = cols * maxCellWidth + (cols - 1) * 4;
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
         <span className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{title}</span>
         <span style={{ ...KICKER, fontSize: 10, color: C.muted }}>{en}</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 4, maxWidth: gridMaxWidth }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 4 }}>
         {rows.flatMap((row, ri) => row.map((cell, ci) => (
           <KanaCell key={`${ri}-${ci}`} cell={cell} onClick={onCellClick} />
         )))}
@@ -1241,7 +1238,27 @@ function KanaSection({ title, en, rows, cols, onCellClick }) {
   );
 }
 
-function KanaReference({ onBack }) {
+// Renders the three sections (gojuon / dakuten / youon) for one syllabary.
+function KanaSyllabary({ data, onCellClick, label, labelEn, accent }) {
+  return (
+    <div>
+      {label && (
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 10,
+          marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${C.border}`,
+        }}>
+          <span className="jp-display" style={{ fontSize: 22, fontWeight: 700, color: accent || C.ink }}>{label}</span>
+          <span style={{ ...KICKER, fontSize: 11, color: C.muted, letterSpacing: "0.18em" }}>{labelEn}</span>
+        </div>
+      )}
+      <KanaSection title="五十音" en="Gojūon · base 46"      rows={data.gojuon}  cols={5} onCellClick={onCellClick} />
+      <KanaSection title="濁音 · 半濁音" en="Dakuten · voiced" rows={data.dakuten} cols={5} onCellClick={onCellClick} />
+      <KanaSection title="拗音" en="Yōon · combined"          rows={data.youon}   cols={3} onCellClick={onCellClick} />
+    </div>
+  );
+}
+
+function KanaReference({ onBack, wide }) {
   const [variant, setVariant] = useState("hiragana");
   const data = KANA_DATA[variant];
 
@@ -1270,37 +1287,56 @@ function KanaReference({ onBack }) {
         <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Tap any character to hear it · 押して発音を聞く</div>
       </div>
 
-      {/* Variant toggle */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        {[
-          { id: "hiragana", jp: "ひらがな", en: "HIRAGANA", desc: "Native Japanese words" },
-          { id: "katakana", jp: "カタカナ", en: "KATAKANA", desc: "Foreign loanwords" },
-        ].map(v => {
-          const active = variant === v.id;
-          return (
-            <button
-              key={v.id}
-              onClick={() => setVariant(v.id)}
-              className="btn-hover"
-              style={{
-                flex: 1, padding: "12px 14px",
-                background: active ? C.surface : "transparent",
-                border: `2px solid ${active ? C.accent : C.border}`,
-                borderRadius: 12, cursor: "pointer", fontFamily: FONT_LATIN, textAlign: "left",
-                boxShadow: active ? `0 4px 14px -6px ${C.accentLine}` : "none",
-              }}
-            >
-              <div className="jp-display" style={{ fontSize: 18, fontWeight: 600, color: active ? C.ink : C.inkDim, lineHeight: 1.2 }}>{v.jp}</div>
-              <div style={{ ...KICKER, fontSize: 9, color: active ? C.accent : C.faint, marginTop: 4 }}>{v.en}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.3 }}>{v.desc}</div>
-            </button>
-          );
-        })}
-      </div>
-
-      <KanaSection title="五十音" en="Gojūon · base 46"           rows={data.gojuon}  cols={5} onCellClick={playKana} />
-      <KanaSection title="濁音 · 半濁音" en="Dakuten · voiced"      rows={data.dakuten} cols={5} onCellClick={playKana} />
-      <KanaSection title="拗音" en="Yōon · combined"               rows={data.youon}   cols={3} onCellClick={playKana} />
+      {wide ? (
+        // Desktop: hiragana + katakana side by side, no toggle needed
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 36, alignItems: "start" }}>
+          <KanaSyllabary
+            data={KANA_DATA.hiragana}
+            onCellClick={playKana}
+            label="ひらがな"
+            labelEn="HIRAGANA · NATIVE"
+            accent={C.accent}
+          />
+          <KanaSyllabary
+            data={KANA_DATA.katakana}
+            onCellClick={playKana}
+            label="カタカナ"
+            labelEn="KATAKANA · LOANWORDS"
+            accent={C.kanji}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Mobile: variant toggle + one syllabary */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            {[
+              { id: "hiragana", jp: "ひらがな", en: "HIRAGANA", desc: "Native Japanese words" },
+              { id: "katakana", jp: "カタカナ", en: "KATAKANA", desc: "Foreign loanwords" },
+            ].map(v => {
+              const active = variant === v.id;
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => setVariant(v.id)}
+                  className="btn-hover"
+                  style={{
+                    flex: 1, padding: "12px 14px",
+                    background: active ? C.surface : "transparent",
+                    border: `2px solid ${active ? C.accent : C.border}`,
+                    borderRadius: 12, cursor: "pointer", fontFamily: FONT_LATIN, textAlign: "left",
+                    boxShadow: active ? `0 4px 14px -6px ${C.accentLine}` : "none",
+                  }}
+                >
+                  <div className="jp-display" style={{ fontSize: 18, fontWeight: 600, color: active ? C.ink : C.inkDim, lineHeight: 1.2 }}>{v.jp}</div>
+                  <div style={{ ...KICKER, fontSize: 9, color: active ? C.accent : C.faint, marginTop: 4 }}>{v.en}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.3 }}>{v.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+          <KanaSyllabary data={data} onCellClick={playKana} />
+        </>
+      )}
     </div>
   );
 }
@@ -2197,7 +2233,7 @@ export default function App() {
   if (screen === "kana-reference") {
     return (
       <div style={PAGE}>
-        <KanaReference onBack={() => setScreen("menu")} />
+        <KanaReference onBack={() => setScreen("menu")} wide={wide} />
       </div>
     );
   }
