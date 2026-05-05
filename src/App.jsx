@@ -111,12 +111,28 @@ function pickMessage(key) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// Path map: 5 distinct daruma assets cover the 7 mascot states via aliasing.
+// SVG preferred for sharpness; sad ships only as PNG.
+const MASCOT_ASSETS = {
+  idle:        "/mascot/daruma-idle.svg",
+  happy:       "/mascot/daruma-happy.svg",
+  cheering:    "/mascot/daruma-cheering.svg",
+  thinking:    "/mascot/daruma-thinking.svg",
+  sad:         "/mascot/daruma-sad-512.png",
+  encouraging: "/mascot/daruma-happy.svg",       // alias — warm pep-talk smile
+  celebrating: "/mascot/daruma-cheering.svg",    // alias — full joyful
+};
+
 function DojoMascot({ state = "idle", message, side = "right", size = 64 }) {
-  // Try to load image asset; fall back to emoji if missing.
-  // Image path: /mascot/daruma-{state}.png (drop into nihongo-dojo-public/public/mascot/)
+  const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊", sad: "🥺" };
+  const assetSrc = MASCOT_ASSETS[state] || MASCOT_ASSETS.idle;
+  // Reset error when state changes so we re-try the asset for the new emotion
   const [imgError, setImgError] = useState(false);
-  const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊" };
-  const fallback = stateEmoji[state] || "🥋";
+  const lastSrcRef = useRef(assetSrc);
+  if (lastSrcRef.current !== assetSrc) {
+    lastSrcRef.current = assetSrc;
+    if (imgError) setImgError(false);
+  }
   return (
     <div style={{
       display: "flex", alignItems: "flex-end", gap: 12,
@@ -125,20 +141,19 @@ function DojoMascot({ state = "idle", message, side = "right", size = 64 }) {
     }}>
       <div style={{
         width: size, height: size, flexShrink: 0,
-        background: "#FEF2F2", borderRadius: "50%",
-        border: "2px solid rgba(188,0,45,0.25)",
+        background: "transparent",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: size * 0.55, lineHeight: 1, overflow: "hidden",
-        boxShadow: "0 2px 8px rgba(188,0,45,0.18)",
+        filter: "drop-shadow(0 3px 6px rgba(188,0,45,0.20))",
       }}>
         {!imgError ? (
           <img
-            src={`/mascot/daruma-${state}.png`}
+            src={assetSrc}
             alt={`Daruma ${state}`}
             onError={() => setImgError(true)}
             style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
-        ) : <span>{fallback}</span>}
+        ) : <span>{stateEmoji[state] || "🥋"}</span>}
       </div>
       {message && (
         <div style={{
