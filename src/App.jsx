@@ -92,6 +92,83 @@ function getLessonsForLevel(level) {
   return lessons;
 }
 
+// ─────────── DOJO MASCOT (Daruma) ───────────
+// Speech-bubble character that reacts to user actions.
+// Falls back to emoji if image assets aren't present.
+const MASCOT_MESSAGES = {
+  studyIntro: ["ようこそ！Welcome to the dojo.", "Ready to train? 🥋", "新しい言葉を覚えよう。"],
+  studyMid:   ["いいね！Halfway there.", "Keep going! 頑張って！", "Strong focus."],
+  studyLast:  ["最後の一つ！Last one.", "Almost there!", "One more to learn."],
+  quizStart:  ["練習タイム！Quiz time.", "Show me what you remember.", "試合だ！Time to spar."],
+  quizCorrect:["正解！Yes!", "Excellent!", "上手！", "Perfect strike."],
+  quizWrong:  ["大丈夫。Let's review.", "Don't worry — that's how we learn.", "もう一度。Try again."],
+  lessonPass: ["合格！You passed!", "Strong! +XP earned.", "新しい階級！One step closer."],
+  lessonFail: ["Almost! Keep training.", "Review and try again.", "Failure is the seed of success."],
+};
+
+function pickMessage(key) {
+  const list = MASCOT_MESSAGES[key] || [""];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function DojoMascot({ state = "idle", message, side = "right", size = 64 }) {
+  // Try to load image asset; fall back to emoji if missing.
+  // Image path: /mascot/daruma-{state}.png (drop into nihongo-dojo-public/public/mascot/)
+  const [imgError, setImgError] = useState(false);
+  const stateEmoji = { idle: "🥋", happy: "😄", cheering: "🎉", thinking: "🤔", encouraging: "🙂", celebrating: "🎊" };
+  const fallback = stateEmoji[state] || "🥋";
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-end", gap: 12,
+      flexDirection: side === "left" ? "row" : "row-reverse",
+      padding: "0 4px",
+    }}>
+      <div style={{
+        width: size, height: size, flexShrink: 0,
+        background: "#FEF2F2", borderRadius: "50%",
+        border: "2px solid rgba(188,0,45,0.25)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.55, lineHeight: 1, overflow: "hidden",
+        boxShadow: "0 2px 8px rgba(188,0,45,0.18)",
+      }}>
+        {!imgError ? (
+          <img
+            src={`/mascot/daruma-${state}.png`}
+            alt={`Daruma ${state}`}
+            onError={() => setImgError(true)}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
+        ) : <span>{fallback}</span>}
+      </div>
+      {message && (
+        <div style={{
+          position: "relative",
+          background: "#FFFFFF", border: "1px solid rgba(188,0,45,0.18)",
+          borderRadius: 14, padding: "10px 14px",
+          fontSize: 13, fontWeight: 500, color: "#3F3F3F",
+          maxWidth: 280, lineHeight: 1.45,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          animation: "popIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        }}>
+          {/* tail */}
+          <div style={{
+            position: "absolute",
+            [side === "left" ? "left" : "right"]: -7,
+            bottom: 14,
+            width: 14, height: 14,
+            background: "#FFFFFF",
+            border: "1px solid rgba(188,0,45,0.18)",
+            borderTop: "none",
+            [side === "left" ? "borderRight" : "borderLeft"]: "none",
+            transform: "rotate(45deg)",
+          }} />
+          <span style={{ position: "relative" }}>{message}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─────────── ICONS (2px stroke) ───────────
 const Icon = ({ d, size = 16, stroke = "currentColor", fill = "none", style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }}>
@@ -1370,6 +1447,7 @@ export default function App() {
   const [learnProgress, setLearnProgress] = useState(loadLearnProgress);
   const [learnLevel, setLearnLevel] = useState(null);    // e.g. "N5"
   const [learnLesson, setLearnLesson] = useState(null);  // active lesson object
+  const [studyIdx, setStudyIdx] = useState(0);           // which card the user is studying (0-4)
   const learnContextRef = useRef(null);                  // tracks when a quiz is launched FROM Learn mode
   const [customOpen, setCustomOpen] = useState(false);
   const [customCreateOpen, setCustomCreateOpen] = useState(false);
@@ -1475,6 +1553,7 @@ export default function App() {
   const startLesson = useCallback((lesson) => {
     if (!lesson || !lesson.items || lesson.items.length === 0) return;
     setLearnLesson(lesson);
+    setStudyIdx(0);
     learnContextRef.current = { level: lesson.level, lessonId: lesson.id };
     setScreen("learn-study");
   }, []);
@@ -1797,78 +1876,146 @@ export default function App() {
     );
   }
 
-  // ═════════ LEARN — STUDY MODE (5 cards before quiz) ═════════
+  // ═════════ LEARN — STUDY MODE (one card at a time) ═════════
   if (screen === "learn-study") {
     const lesson = learnLesson;
     if (!lesson) { setScreen("learn-levels"); return null; }
     const lvl = LEVELS.find(l => l.id === lesson.level);
+    const totalCards = lesson.items.length;
+    const it = lesson.items[studyIdx];
+    const isFirst = studyIdx === 0;
+    const isLast  = studyIdx === totalCards - 1;
+    const progressPct = ((studyIdx + 1) / totalCards) * 100;
+
+    // Mascot state varies through the lesson
+    let mascotState, mascotMsg;
+    if (isFirst)       { mascotState = "happy";       mascotMsg = pickMessage("studyIntro"); }
+    else if (isLast)   { mascotState = "thinking";    mascotMsg = pickMessage("studyLast"); }
+    else if (studyIdx >= Math.floor(totalCards / 2)) { mascotState = "encouraging"; mascotMsg = pickMessage("studyMid"); }
+    else               { mascotState = "idle";        mascotMsg = null; }
+
+    const advance = () => {
+      if (isLast) beginLessonQuiz();
+      else setStudyIdx(i => i + 1);
+    };
+    const retreat = () => { if (!isFirst) setStudyIdx(i => i - 1); };
+
     return (
       <div style={PAGE}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <button onClick={() => { learnContextRef.current = null; setScreen("learn-lessons"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <IconArrowL size={12} /> Lessons
+            <IconX size={12} /> Exit
           </button>
           <div style={{ ...KICKER, color: C.muted }}>{lvl.belt} · Lesson {lesson.number}</div>
-          <div style={{ width: 70 }} />
+          <div className="num" style={{ color: C.inkDim, fontSize: 13 }}>
+            {(studyIdx + 1).toString().padStart(2, "0")} <span style={{ color: C.faint }}>/</span> {totalCards.toString().padStart(2, "0")}
+          </div>
         </div>
 
-        <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <div className="jp-display" style={{ fontSize: 24, fontWeight: 600, color: C.ink, letterSpacing: "0.06em" }}>学ぶ · Study</div>
-          <div style={{ ...KICKER, marginTop: 6, fontSize: 11, color: C.faint }}>Read each card, then take the practice quiz</div>
-        </div>
-
-        <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
-          {lesson.items.map((it, i) => (
-            <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 2px rgba(80,60,30,0.04), 0 6px 18px -8px rgba(80,60,30,0.10)" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
-                <span className="num" style={{ color: C.accent, fontWeight: 700, fontSize: 14 }}>{(i + 1).toString().padStart(2, "0")}</span>
-                <span style={{ ...KICKER, fontSize: 9, color: C.faint }}>{CATEGORIES[it.cat] || it.cat}</span>
-              </div>
-              <div className="jp" style={{ fontSize: 28, fontWeight: 700, color: C.ink, letterSpacing: "0.02em", lineHeight: 1.3 }}>
-                <Furigana jp={it.jp} reading={it.reading} /> <SpeakBtn text={cleanJp(it.jp)} size={16} />
-              </div>
-              <div style={{ fontSize: 15, color: C.inkDim, marginTop: 6 }}>{it.en}</div>
-              {it.conn && (
-                <div style={{ marginTop: 10, display: "inline-flex", alignItems: "baseline", gap: 8, padding: "5px 12px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 6 }}>
-                  <span style={JP_LABEL}>接続</span>
-                  <span className="jp" style={{ fontSize: 13, fontWeight: 600 }}><ColoredConn conn={it.conn} /></span>
-                </div>
-              )}
-              {it.ex && (
-                <div style={{ marginTop: 12, padding: "10px 12px", background: C.elevated, borderLeft: `2px solid ${C.accent}`, borderRadius: 6 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={JP_LABEL}>例</span>
-                    <span className="jp" style={{ flex: 1, fontSize: 15, color: C.ink, fontWeight: 600, lineHeight: 1.55 }}><FuriganaSentence text={it.ex} /></span>
-                    <SpeakBtn text={stripFurigana(it.ex)} size={12} />
-                  </div>
-                  {it.exEn && (
-                    <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic", marginTop: 4, marginLeft: 24 }}>{it.exEn}</div>
-                  )}
-                </div>
-              )}
-              {it.kanjiStory && (
-                <div style={{ marginTop: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "3px solid #7C3AED", borderRadius: 8, padding: "10px 12px", display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 16, lineHeight: 1.1 }}>🧠</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ ...KICKER, color: C.kanji, fontSize: 9, marginBottom: 3 }}>{storyLabel(it.jp)}</div>
-                    <div style={{ fontSize: 13, color: "#5B21B6", fontWeight: 500, lineHeight: 1.5 }}>{it.kanjiStory}</div>
-                  </div>
-                </div>
-              )}
-            </div>
+        {/* Progress bar — segmented */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 18, height: 6 }}>
+          {lesson.items.map((_, i) => (
+            <div key={i} style={{
+              flex: 1, height: "100%", borderRadius: 3,
+              background: i < studyIdx ? C.pass : i === studyIdx ? C.accent : C.border,
+              transition: "background 0.3s",
+            }} />
           ))}
         </div>
 
-        <button onClick={beginLessonQuiz} className="btn-hover" style={{
-          width: "100%", padding: "16px 22px",
-          fontSize: 14, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase",
-          background: C.accent, color: "#fff",
-          border: `1px solid ${C.accent}`, borderRadius: 12, cursor: "pointer",
-          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
-          fontFamily: FONT_LATIN,
+        {/* THE CARD */}
+        <div className="pop-in" key={`card_${studyIdx}`} style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18,
+          padding: wide ? "32px 28px" : "24px 20px", marginBottom: 16,
+          boxShadow: "0 1px 2px rgba(80,60,30,0.04), 0 12px 32px -12px rgba(80,60,30,0.12)",
+          position: "relative", overflow: "hidden",
         }}>
-          Begin Practice Quiz <IconChevRt size={14} />
-        </button>
+          {/* subtle red top accent */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${C.accent}, transparent)`, opacity: 0.6 }} />
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <Chip tone="accent" style={{ fontSize: 10 }}>{CATEGORIES[it.cat] || it.cat}</Chip>
+            <span style={{ ...KICKER, color: C.faint, fontSize: 9 }}>NEW WORD</span>
+          </div>
+
+          {/* Headword — big and centered */}
+          <div style={{ textAlign: "center", padding: "12px 0" }}>
+            <div className="jp-display" style={{ fontSize: wide ? 64 : 52, fontWeight: 600, color: C.ink, letterSpacing: "0.04em", lineHeight: 1.4 }}>
+              <Furigana jp={it.jp} reading={it.reading} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <SpeakBtn text={cleanJp(it.jp)} size={26} />
+            </div>
+            <div style={{ fontSize: wide ? 22 : 19, color: C.inkDim, marginTop: 14, fontWeight: 500 }}>{it.en}</div>
+          </div>
+
+          {it.conn && (
+            <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+              <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8, padding: "6px 14px", background: C.mutedBg, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                <span style={JP_LABEL}>接続</span>
+                <span className="jp" style={{ fontSize: 14, fontWeight: 600 }}><ColoredConn conn={it.conn} /></span>
+              </div>
+            </div>
+          )}
+
+          {it.ex && (
+            <div style={{ marginTop: 18, padding: "12px 14px", background: C.elevated, borderLeft: `3px solid ${C.accent}`, borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                <span style={JP_LABEL}>例</span>
+                <span className="jp" style={{ flex: 1, fontSize: 16, color: C.ink, fontWeight: 600, lineHeight: 1.55 }}><FuriganaSentence text={it.ex} /></span>
+                <SpeakBtn text={stripFurigana(it.ex)} size={14} />
+              </div>
+              {it.exEn && (
+                <div style={{ fontSize: 13, color: C.muted, fontStyle: "italic", marginTop: 5, marginLeft: 26 }}>{it.exEn}</div>
+              )}
+            </div>
+          )}
+
+          {it.kanjiStory && (
+            <div style={{ marginTop: 14, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "3px solid #7C3AED", borderRadius: 10, padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 20, lineHeight: 1.1 }}>🧠</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT_LATIN, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 11, color: C.kanji, marginBottom: 5 }}>{storyLabel(it.jp)}</div>
+                <div style={{ fontSize: 14, color: "#5B21B6", fontWeight: 500, lineHeight: 1.55 }}>{it.kanjiStory}</div>
+              </div>
+            </div>
+          )}
+
+          <KanjiRadicals word={it.jp} />
+        </div>
+
+        {/* MASCOT */}
+        {mascotMsg && (
+          <div style={{ marginBottom: 14, animation: "fadeIn 0.4s ease-out both" }}>
+            <DojoMascot state={mascotState} message={mascotMsg} side="left" size={56} />
+          </div>
+        )}
+
+        {/* ACTION BAR */}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={retreat} disabled={isFirst} className={isFirst ? "" : "btn-hover"} style={{
+            flex: "0 0 auto", padding: "14px 18px",
+            background: isFirst ? C.mutedBg : "transparent",
+            color: isFirst ? C.faint : C.inkDim,
+            border: `1px solid ${C.border}`, borderRadius: 12,
+            cursor: isFirst ? "not-allowed" : "pointer",
+            fontFamily: FONT_LATIN, fontSize: 13, fontWeight: 600,
+            display: "inline-flex", alignItems: "center", gap: 6,
+          }}>
+            <IconArrowL size={14} /> Back
+          </button>
+          <button onClick={advance} className="btn-hover" style={{
+            flex: 1, padding: "14px 18px",
+            fontSize: 14, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase",
+            background: isLast ? C.pass : C.accent, color: "#fff",
+            border: `1px solid ${isLast ? C.pass : C.accent}`, borderRadius: 12, cursor: "pointer",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+            fontFamily: FONT_LATIN,
+            boxShadow: isLast ? `0 4px 14px -4px ${C.passLine}` : `0 4px 14px -4px ${C.accentLine}`,
+          }}>
+            {isLast ? "Begin Practice Quiz" : "I Know This"} <IconChevRt size={14} />
+          </button>
+        </div>
       </div>
     );
   }
@@ -2276,6 +2423,17 @@ export default function App() {
               : (passed ? "Passed" : "Retry")}
           </div>
         </div>
+
+        {isLessonResult && (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+            <DojoMascot
+              state={passed ? "celebrating" : "encouraging"}
+              message={passed ? pickMessage("lessonPass") : pickMessage("lessonFail")}
+              side="right"
+              size={72}
+            />
+          </div>
+        )}
 
         {/* STATS */}
         <div className="slide-up" style={{ display: "grid", gridTemplateColumns: wide ? "repeat(4, 1fr)" : "repeat(2, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 18 }}>
