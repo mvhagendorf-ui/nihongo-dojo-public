@@ -685,6 +685,9 @@ function WrongItem({ w, isLast }) {
           <SpeakBtn text={stripFurigana(w.ex)} size={13} />
         </div>
       )}
+      {w.exEn && (
+        <div style={{ marginTop: 4, marginLeft: 28, fontSize: 13, color: C.muted, fontStyle: "italic", lineHeight: 1.45 }}>{w.exEn}</div>
+      )}
       {w.kanjiStory && (
         <div style={{ marginTop: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "2px solid #7C3AED", padding: "10px 14px", borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
           <span style={{ fontSize: 16, lineHeight: 1.2 }}>🧠</span>
@@ -750,6 +753,9 @@ function GlossaryItem({ item, mistakes, bookmarked, onToggle, onToggleBookmark, 
               <span className="jp" style={{ flex: 1, minWidth: 0, fontSize: 16, color: C.ink, fontWeight: 600 }}><FuriganaSentence text={item.ex} /></span>
               <SpeakBtn text={stripFurigana(item.ex)} size={13} />
             </div>
+          )}
+          {item.exEn && (
+            <div style={{ marginTop: 4, marginLeft: 28, fontSize: 13, color: C.muted, fontStyle: "italic", lineHeight: 1.45 }}>{item.exEn}</div>
           )}
           {item.kanjiStory && (
             <div style={{ marginTop: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "3px solid #7C3AED", borderRadius: 8, padding: "10px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -1358,7 +1364,7 @@ export default function App() {
       savedRef.current = true;
       const slimWrong = wrongList.map(w => w._aiQuestion
         ? { _aiQuestion: true, jp: w.jp, cat: w.cat, num: w.num, type: w.type, prompt: w.prompt, promptKind: w.promptKind, choices: w.choices, correctIdx: w.correctIdx, explanation: w.explanation, source: w.source }
-        : { jp: w.jp, en: w.en, cat: w.cat, num: w.num, conn: w.conn, ex: w.ex, kanjiStory: w.kanjiStory, n5syn: w.n5syn, oneLiner: w.oneLiner }
+        : { jp: w.jp, en: w.en, cat: w.cat, num: w.num, conn: w.conn, ex: w.ex, exEn: w.exEn, kanjiStory: w.kanjiStory, n5syn: w.n5syn, oneLiner: w.oneLiner }
       );
       saveSession({ score, total, bestStreak, cats: selectedCats, wrongList: slimWrong });
       setHistory(loadHistory());
@@ -2250,6 +2256,9 @@ export default function App() {
                     </span>
                     <SpeakBtn text={stripFurigana(q.ex)} size={14} />
                   </div>
+                )}
+                {q.exEn && (
+                  <div style={{ marginTop: 4, marginLeft: 30, fontSize: 14, color: C.muted, fontStyle: "italic", lineHeight: 1.5 }}>{q.exEn}</div>
                 )}
                 {q.kanjiStory && (
                   <div style={{ marginTop: 16, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.22)", borderLeft: "3px solid #7C3AED", borderRadius: 10, padding: "16px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
