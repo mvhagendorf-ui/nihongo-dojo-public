@@ -41,11 +41,11 @@ const JP_LABEL = { fontFamily: FONT_JP, fontSize: 14, fontWeight: 700, color: C.
 const LESSON_SIZE = 5;
 
 const LEVELS = [
-  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)" },
-  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)" },
-  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)" },
-  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)" },
-  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)" },
+  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)",   character: "/dojo/judo_boy.png",                  characterEn: "Judo student" },
+  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)", character: "/dojo/judo_girl.png",                 characterEn: "Judo student" },
+  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)", character: "/dojo/karate.png",                    characterEn: "Karate practitioner" },
+  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)", character: "/dojo/kenjutsu_shinsengumi_man.png",  characterEn: "Kenjutsu master" },
+  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)", character: "/dojo/samurai.png",                   characterEn: "Samurai" },
 ];
 
 const LEVEL_CATEGORIES = {
@@ -1781,7 +1781,7 @@ export default function App() {
   if (screen === "learn-levels") {
     return (
       <div style={PAGE}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <button onClick={() => { learnContextRef.current = null; setLearnLevel(null); setLearnLesson(null); setScreen("menu"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconArrowL size={12} /> Menu
           </button>
@@ -1789,9 +1789,36 @@ export default function App() {
           <div style={{ width: 70 }} />
         </div>
 
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div className="jp-display" style={{ fontSize: wide ? 36 : 28, fontWeight: 600, color: C.ink, letterSpacing: "0.12em" }}>道場の道</div>
-          <div style={{ ...KICKER, marginTop: 8, fontSize: 12 }}>Choose your belt · Begin training</div>
+        {/* DOJO HERO BANNER — sets the atmosphere */}
+        <div style={{
+          position: "relative",
+          height: wide ? 220 : 170,
+          marginBottom: 22,
+          borderRadius: 18,
+          overflow: "hidden",
+          backgroundImage: `url('/dojo/bg_doujou.jpg')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          boxShadow: "0 8px 28px -10px rgba(80,60,30,0.30)",
+        }}>
+          {/* dark gradient overlay for text readability */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.55) 100%)",
+          }} />
+          <div style={{
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column", justifyContent: "flex-end",
+            padding: wide ? "26px 30px" : "20px 22px",
+            color: "#FFFFFF",
+          }}>
+            <div className="jp-display" style={{ fontSize: wide ? 40 : 32, fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.45)" }}>
+              道場の道
+            </div>
+            <div style={{ ...KICKER, marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", letterSpacing: "0.18em" }}>
+              The Path of the Dōjō · Choose your belt
+            </div>
+          </div>
         </div>
 
         <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1816,19 +1843,28 @@ export default function App() {
               >
                 {/* belt stripe — narrow color bar at top */}
                 <div style={{ height: 6, background: lvl.beltStripe }} />
-                <div style={{ padding: wide ? "20px 24px" : "16px 18px", display: "flex", alignItems: "center", gap: 18 }}>
-                  <div style={{ flex: "0 0 auto", textAlign: "center" }}>
-                    <div className="jp-display" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, letterSpacing: "0.04em" }}>{lvl.id}</div>
-                    <div className="jp" style={{ fontSize: 14, fontWeight: 700, marginTop: 4, opacity: 0.85 }}>{lvl.belt}</div>
+                <div style={{ padding: wide ? "16px 22px" : "14px 16px", display: "flex", alignItems: "center", gap: 14, minHeight: wide ? 120 : 104 }}>
+                  {/* CHARACTER PORTRAIT */}
+                  <div style={{ flex: "0 0 auto", width: wide ? 88 : 72, height: wide ? 100 : 84, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img
+                      src={lvl.character}
+                      alt={lvl.characterEn}
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.18))" }}
+                    />
                   </div>
+                  {/* BELT ID */}
+                  <div style={{ flex: "0 0 auto", textAlign: "center", paddingLeft: 4, borderLeft: `1px solid ${lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.10)"}`, paddingRight: 14 }}>
+                    <div className="jp-display" style={{ fontSize: wide ? 34 : 28, fontWeight: 700, lineHeight: 1, letterSpacing: "0.04em" }}>{lvl.id}</div>
+                    <div className="jp" style={{ fontSize: 13, fontWeight: 700, marginTop: 4, opacity: 0.85 }}>{lvl.belt}</div>
+                  </div>
+                  {/* INFO */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "0.02em" }}>{lvl.beltEn}</div>
-                    <div style={{ fontSize: 12, marginTop: 3, opacity: 0.78 }}>{lvl.rank}</div>
-                    {/* progress bar */}
-                    <div style={{ marginTop: 12, height: 5, background: "rgba(0,0,0,0.18)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ fontSize: wide ? 17 : 15, fontWeight: 700, letterSpacing: "0.02em" }}>{lvl.beltEn}</div>
+                    <div style={{ fontSize: 11, marginTop: 2, opacity: 0.78 }}>{lvl.rank}</div>
+                    <div style={{ marginTop: 10, height: 5, background: "rgba(0,0,0,0.18)", borderRadius: 3, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${pct}%`, background: lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.95)" : "rgba(31,41,55,0.85)", transition: "width 0.6s ease" }} />
                     </div>
-                    <div style={{ fontSize: 11, marginTop: 6, opacity: 0.78, fontWeight: 500 }}>
+                    <div style={{ fontSize: 11, marginTop: 5, opacity: 0.78, fontWeight: 500 }}>
                       {completed} / {totalLessons} lessons{xp > 0 ? ` · ${xp} XP` : ""}
                     </div>
                   </div>
@@ -1866,12 +1902,16 @@ export default function App() {
           <div style={{ width: 70 }} />
         </div>
 
-        {/* Belt header banner */}
-        <div style={{ background: lvl.beltColor, color: lvl.textOn, borderRadius: 14, padding: "18px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, boxShadow: `0 8px 24px -10px ${lvl.glow}` }}>
-          <div style={{ height: 4, width: 36, background: lvl.beltStripe, borderRadius: 2, flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div className="jp-display" style={{ fontSize: 20, fontWeight: 700, letterSpacing: "0.04em" }}>{lvl.belt} {lvl.beltEn}</div>
-            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 3 }}>{progress.completed.length} / {lessons.length} lessons · {progress.xp || 0} XP</div>
+        {/* Belt header banner — features the level's dōjō character */}
+        <div style={{ background: lvl.beltColor, color: lvl.textOn, borderRadius: 16, padding: "16px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 16, boxShadow: `0 8px 24px -10px ${lvl.glow}`, position: "relative", overflow: "hidden" }}>
+          <div style={{ flex: "0 0 auto", width: 76, height: 92, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src={lvl.character} alt={lvl.characterEn} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.20))" }} />
+          </div>
+          <div style={{ height: 60, width: 1, background: lvl.textOn === "#FFFFFF" ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.10)", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="jp-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.04em" }}>{lvl.belt} {lvl.beltEn}</div>
+            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 4 }}>{lvl.rank}</div>
+            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 6, fontWeight: 600 }}>{progress.completed.length} / {lessons.length} lessons · {progress.xp || 0} XP</div>
           </div>
         </div>
 
@@ -2191,7 +2231,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* LEARN MODE — primary CTA for newcomers */}
+        {/* LEARN MODE — primary CTA for newcomers, features dōjō building */}
         {(() => {
           const totalCompleted = LEVELS.reduce((s, lvl) => s + (learnProgress[lvl.id]?.completed?.length || 0), 0);
           const totalXp = LEVELS.reduce((s, lvl) => s + (learnProgress[lvl.id]?.xp || 0), 0);
@@ -2203,13 +2243,15 @@ export default function App() {
                 width: "100%", marginBottom: wide ? 18 : 14,
                 background: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentHi} 100%)`,
                 color: "#fff", border: "none", borderRadius: 16,
-                padding: wide ? "22px 28px" : "20px 22px",
+                padding: wide ? "20px 24px" : "18px 18px",
                 cursor: "pointer", textAlign: "left", fontFamily: FONT_LATIN,
                 boxShadow: "0 6px 20px -8px rgba(188,0,45,0.45), 0 2px 6px rgba(188,0,45,0.18)",
-                display: "flex", alignItems: "center", gap: 18,
+                display: "flex", alignItems: "center", gap: 16, position: "relative", overflow: "hidden",
               }}
             >
-              <div style={{ fontSize: wide ? 44 : 36, lineHeight: 1, flexShrink: 0 }}>🥋</div>
+              <div style={{ flex: "0 0 auto", width: wide ? 96 : 78, height: wide ? 96 : 78, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/dojo/building_doujou.png" alt="Dōjō" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.30))" }} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...KICKER, color: "rgba(255,255,255,0.78)", fontSize: 11, marginBottom: 4 }}>道場 · DOJO</div>
                 <div className="jp-display" style={{ fontSize: wide ? 24 : 20, fontWeight: 700, letterSpacing: "0.04em" }}>
@@ -2536,14 +2578,25 @@ export default function App() {
         </div>
 
         {isLessonResult && (
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
-            <DojoMascot
-              state={passed ? "celebrating" : "encouraging"}
-              message={passed ? pickMessage("lessonPass") : pickMessage("lessonFail")}
-              side="right"
-              size={72}
-            />
-          </div>
+          <>
+            {passed && (
+              <div className="pop-in" style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <img
+                  src="/dojo/karate_kawarawari.png"
+                  alt="Achievement — board broken!"
+                  style={{ width: wide ? 180 : 140, height: "auto", filter: "drop-shadow(0 6px 14px rgba(188,0,45,0.30))" }}
+                />
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+              <DojoMascot
+                state={passed ? "celebrating" : "encouraging"}
+                message={passed ? pickMessage("lessonPass") : pickMessage("lessonFail")}
+                side="right"
+                size={80}
+              />
+            </div>
+          </>
         )}
 
         {/* STATS */}
