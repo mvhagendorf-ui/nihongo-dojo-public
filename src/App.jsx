@@ -626,11 +626,11 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   initVoices();
   speechSynthesis.addEventListener("voiceschanged", initVoices);
 }
-function speak(text) {
+function speak(text, rate) {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "ja-JP"; u.rate = 0.85; u.pitch = 1.05;
+  u.lang = "ja-JP"; u.rate = rate || 0.85; u.pitch = 1.05;
   if (jaVoice) u.voice = jaVoice;
   speechSynthesis.speak(u);
 }
@@ -2436,18 +2436,21 @@ export default function App() {
     const labelEx = isBeginner ? "Example" : "例";
     const labelConn = isBeginner ? "Pattern" : "接続";
 
+    const advanceCard = () => {
+      setCardReaction(null);
+      if (isLast) beginLessonQuiz();
+      else setStudyIdx(i => i + 1);
+    };
     const rateAndAdvance = (rating) => {
       if (cardReaction) return; // ignore double-clicks while reaction plays
       setStudyRatings(prev => ({ ...prev, [studyIdx]: rating }));
       // Always play the headword audio so user hears pronunciation reinforced
       try { speak(cleanJp(it.jp)); } catch {}
-      // Show sensei reaction for ~1.5s, then advance / start quiz
       setCardReaction({ rating, key: studyIdx });
-      window.setTimeout(() => {
-        setCardReaction(null);
-        if (isLast) beginLessonQuiz();
-        else setStudyIdx(i => i + 1);
-      }, 1500);
+      // I Know → snappy auto-advance; Don't Know → linger so the user can study
+      if (rating === "know") {
+        window.setTimeout(advanceCard, 1500);
+      }
     };
     const retreat = () => { if (!isFirst) setStudyIdx(i => i - 1); };
     const currentRating = studyRatings[studyIdx];
@@ -2572,65 +2575,184 @@ export default function App() {
           <KanjiRadicals word={it.jp} />
         </div>
 
-        {/* SENSEI REACTION — appears momentarily after rating */}
-        {cardReaction && (() => {
-          const isKnow = cardReaction.rating === "know";
-          const senseiSrc = isKnow ? "/sensei/sensei-thumbs.svg" : "/sensei/sensei-concerned.svg";
-          const reactionMsg = isKnow ? "素晴らしい！Excellent!" : "一緒に練習しよう · Let's practice together";
-          const reactionColor = isKnow ? C.pass : C.accent;
-          const reactionBg    = isKnow ? "#F0FAF4" : "#FFF5F6";
-          return (
-            <div className="pop-in" key={`reaction_${cardReaction.key}_${cardReaction.rating}`} style={{
-              display: "flex", alignItems: "center", gap: 14,
-              padding: "14px 16px",
-              background: reactionBg,
-              border: `2px solid ${reactionColor}`,
-              borderRadius: 14, marginBottom: 10,
-              boxShadow: `0 6px 18px -8px ${reactionColor}`,
-            }}>
-              <img src={senseiSrc} alt={isKnow ? "Sensei thumbs up" : "Sensei concerned"} style={{
-                width: 64, height: 64, flexShrink: 0,
+        {/* SENSEI REACTION — momentary for I Know, persistent + extended for Don't Know */}
+        {cardReaction && cardReaction.rating === "know" && (
+          <div className="pop-in" key={`reaction_${cardReaction.key}_know`} style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "14px 16px",
+            background: "#F0FAF4",
+            border: `2px solid ${C.pass}`,
+            borderRadius: 14, marginBottom: 10,
+            boxShadow: `0 6px 18px -8px ${C.pass}`,
+          }}>
+            <img src="/sensei/sensei-thumbs.svg" alt="Sensei thumbs up" style={{
+              width: 64, height: 64, flexShrink: 0,
+              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.12))",
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ ...KICKER, fontSize: 10, color: C.pass, marginBottom: 4 }}>覚えた · Remembered</div>
+              <div className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.4 }}>素晴らしい！Excellent!</div>
+            </div>
+          </div>
+        )}
+
+        {cardReaction && cardReaction.rating === "dontKnow" && (
+          <div className="pop-in" key={`reaction_${cardReaction.key}_dontKnow`} style={{
+            background: "#FFF5F6",
+            border: `2px solid ${C.accent}`,
+            borderRadius: 14, marginBottom: 10,
+            boxShadow: `0 6px 18px -8px ${C.accent}`,
+            overflow: "hidden",
+          }}>
+            {/* Sensei header — concerned, encouraging */}
+            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px 12px" }}>
+              <img src="/sensei/sensei-concerned.svg" alt="Sensei concerned" style={{
+                width: 72, height: 72, flexShrink: 0,
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.12))",
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ ...KICKER, fontSize: 10, color: reactionColor, marginBottom: 4 }}>
-                  {isKnow ? "覚えた · Remembered" : "聞いてみよう · Listen again"}
+                <div style={{ ...KICKER, fontSize: 10, color: C.accent, marginBottom: 4 }}>一緒に学ぼう · Let's learn together</div>
+                <div className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.4, marginBottom: 2 }}>
+                  No problem — take your time.
                 </div>
-                <div className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.4 }}>
-                  {reactionMsg}
+                <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.45 }}>
+                  Study the card above, listen to the audio, then continue when you feel ready.
                 </div>
               </div>
             </div>
-          );
-        })()}
 
-        {/* RATING BAR — Don't Know / I Know — both advance, rating informs quiz emphasis */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-          <button onClick={() => rateAndAdvance("dontKnow")} disabled={!!cardReaction} className="btn-hover" style={{
-            flex: 1, padding: "16px 18px",
-            fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
-            background: currentRating === "dontKnow" ? C.accent : "#FFF5F6",
-            color: currentRating === "dontKnow" ? "#fff" : C.accent,
-            border: `2px solid ${C.accent}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
-            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-            fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "dontKnow" ? 0.45 : 1,
-            boxShadow: currentRating === "dontKnow" ? `0 4px 14px -4px ${C.accentLine}` : "none",
-          }}>
-            <IconX size={16} /> Don't Know
-          </button>
-          <button onClick={() => rateAndAdvance("know")} disabled={!!cardReaction} className="btn-hover" style={{
-            flex: 1, padding: "16px 18px",
-            fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
-            background: currentRating === "know" ? C.pass : "#F0FAF4",
-            color: currentRating === "know" ? "#fff" : C.pass,
-            border: `2px solid ${C.pass}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
-            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-            fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "know" ? 0.45 : 1,
-            boxShadow: currentRating === "know" ? `0 4px 14px -4px ${C.passLine}` : "none",
-          }}>
-            <IconCheck size={16} /> I Know
-          </button>
-        </div>
+            {/* Sensei's notes — extended explanation */}
+            <div style={{
+              background: "#FFFFFF",
+              borderTop: `1px solid rgba(188,0,45,0.18)`,
+              padding: "12px 16px",
+              display: "flex", flexDirection: "column", gap: 10,
+            }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ ...KICKER, fontSize: 10, color: C.accent }}>📖 Sensei's notes · 解説</span>
+              </div>
+
+              {/* Word recap with reading + meaning highlighted */}
+              <div style={{
+                display: "flex", flexDirection: "column", gap: 6,
+                padding: "10px 12px",
+                background: C.elevated, border: `1px solid ${C.border}`, borderRadius: 8,
+              }}>
+                <div className="jp" style={{ fontSize: 18, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
+                  <Furigana jp={it.jp} reading={it.reading} />
+                </div>
+                {it.reading && it.reading !== it.jp && (
+                  <div className="num" style={{ fontSize: 12, color: C.muted, letterSpacing: "0.04em" }}>
+                    Read as: <span className="jp" style={{ color: C.inkDim, fontWeight: 600 }}>{it.reading}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: 13, color: C.inkDim, fontWeight: 600, lineHeight: 1.45 }}>
+                  Meaning: <span style={{ color: C.ink }}>{it.en}</span>
+                </div>
+              </div>
+
+              {/* Memory hook from kanji story / etymology — the unique extra explanation */}
+              {it.kanjiStory && (
+                <div style={{
+                  background: "rgba(124,58,237,0.06)",
+                  border: "1px solid rgba(124,58,237,0.22)",
+                  borderLeft: "3px solid #7C3AED",
+                  borderRadius: 8, padding: "10px 12px",
+                  display: "flex", gap: 10, alignItems: "flex-start",
+                }}>
+                  <span style={{ fontSize: 18, lineHeight: 1.1 }}>🧠</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...KICKER, fontSize: 9, color: C.kanji, marginBottom: 4 }}>Memory hook</div>
+                    <div style={{ fontSize: 13, color: "#5B21B6", fontWeight: 500, lineHeight: 1.5 }}>
+                      {it.kanjiStory}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Example with translation */}
+              {it.ex && (
+                <div style={{
+                  padding: "10px 12px",
+                  background: C.elevated, borderLeft: `3px solid ${C.accent}`, borderRadius: 8,
+                }}>
+                  <div style={{ ...KICKER, fontSize: 9, color: C.accent, marginBottom: 5 }}>In context · 例文</div>
+                  <div className="jp" style={{ fontSize: 14, color: C.ink, fontWeight: 600, lineHeight: 1.5 }}>
+                    <FuriganaSentence text={it.ex} />
+                  </div>
+                  {it.exEn && (
+                    <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginTop: 4, lineHeight: 1.4 }}>
+                      {it.exEn}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* RATING BAR or REVIEW ACTIONS — depends on reaction state */}
+        {cardReaction?.rating === "dontKnow" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => speak(cleanJp(it.jp))} className="btn-hover" style={{
+                flex: 1, padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                background: "transparent", color: C.ink,
+                border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                fontFamily: FONT_LATIN,
+              }}>
+                <IconVolume size={14} /> Listen
+              </button>
+              <button onClick={() => speak(cleanJp(it.jp), 0.5)} className="btn-hover" style={{
+                flex: 1, padding: "12px 14px", fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                background: "transparent", color: C.ink,
+                border: `1px solid ${C.border}`, borderRadius: 12, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                fontFamily: FONT_LATIN,
+              }}>
+                <IconVolume size={14} /> Slow · ゆっくり
+              </button>
+            </div>
+            <button onClick={advanceCard} className="btn-hover" style={{
+              padding: "16px 18px", fontSize: 14, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+              background: C.accent, color: "#fff",
+              border: `2px solid ${C.accent}`, borderRadius: 14, cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+              fontFamily: FONT_LATIN,
+              boxShadow: `0 4px 14px -4px ${C.accentLine}`,
+            }}>
+              {isLast ? "Begin practice · 練習開始" : "Got it · Next card"} <IconChevRt size={16} />
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+            <button onClick={() => rateAndAdvance("dontKnow")} disabled={!!cardReaction} className="btn-hover" style={{
+              flex: 1, padding: "16px 18px",
+              fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+              background: currentRating === "dontKnow" ? C.accent : "#FFF5F6",
+              color: currentRating === "dontKnow" ? "#fff" : C.accent,
+              border: `2px solid ${C.accent}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+              fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "dontKnow" ? 0.45 : 1,
+              boxShadow: currentRating === "dontKnow" ? `0 4px 14px -4px ${C.accentLine}` : "none",
+            }}>
+              <IconX size={16} /> Don't Know
+            </button>
+            <button onClick={() => rateAndAdvance("know")} disabled={!!cardReaction} className="btn-hover" style={{
+              flex: 1, padding: "16px 18px",
+              fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+              background: currentRating === "know" ? C.pass : "#F0FAF4",
+              color: currentRating === "know" ? "#fff" : C.pass,
+              border: `2px solid ${C.pass}`, borderRadius: 14, cursor: cardReaction ? "default" : "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+              fontFamily: FONT_LATIN, opacity: cardReaction && cardReaction.rating !== "know" ? 0.45 : 1,
+              boxShadow: currentRating === "know" ? `0 4px 14px -4px ${C.passLine}` : "none",
+            }}>
+              <IconCheck size={16} /> I Know
+            </button>
+          </div>
+        )}
 
         {/* SECONDARY NAV — Back arrow only */}
         {!isFirst && (
