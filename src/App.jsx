@@ -1789,34 +1789,50 @@ export default function App() {
           <div style={{ width: 70 }} />
         </div>
 
-        {/* DOJO HERO BANNER — sets the atmosphere */}
+        {/* DOJO HERO BANNER — atmospheric photo + bold typography */}
         <div style={{
           position: "relative",
-          height: wide ? 220 : 170,
+          height: wide ? 240 : 190,
           marginBottom: 22,
           borderRadius: 18,
           overflow: "hidden",
           backgroundImage: `url('/dojo/bg_doujou.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          boxShadow: "0 8px 28px -10px rgba(80,60,30,0.30)",
+          boxShadow: "0 8px 28px -10px rgba(80,60,30,0.40), 0 2px 6px rgba(0,0,0,0.10)",
         }}>
-          {/* dark gradient overlay for text readability */}
+          {/* layered gradient — vignette top + heavy bottom for text */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.55) 100%)",
+            background: "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.20) 50%, rgba(0,0,0,0.78) 100%)",
           }} />
+          {/* red accent corner stamp */}
+          <div style={{
+            position: "absolute", top: 16, right: 16,
+            width: 54, height: 54, borderRadius: "50%",
+            background: C.accent,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+            transform: "rotate(-6deg)",
+          }}>
+            <span className="jp-hero" style={{ fontSize: 22, color: "#FFF", lineHeight: 1, fontWeight: 800 }}>道</span>
+          </div>
           <div style={{
             position: "absolute", inset: 0,
             display: "flex", flexDirection: "column", justifyContent: "flex-end",
             padding: wide ? "26px 30px" : "20px 22px",
             color: "#FFFFFF",
           }}>
-            <div className="jp-display" style={{ fontSize: wide ? 40 : 32, fontWeight: 700, letterSpacing: "0.08em", lineHeight: 1.1, textShadow: "0 2px 8px rgba(0,0,0,0.45)" }}>
+            <div className="en-impact" style={{ fontSize: 11, color: "rgba(255,255,255,0.92)", letterSpacing: "0.32em", marginBottom: 8 }}>
+              ENTER THE DOJO
+            </div>
+            <div className="jp-hero" style={{ fontSize: wide ? 56 : 42, lineHeight: 1, textShadow: "0 4px 16px rgba(0,0,0,0.6)" }}>
               道場の道
             </div>
-            <div style={{ ...KICKER, marginTop: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", letterSpacing: "0.18em" }}>
-              The Path of the Dōjō · Choose your belt
+            <div className="en-impact" style={{ marginTop: 10, fontSize: wide ? 14 : 12, color: "#FFFFFF", letterSpacing: "0.22em" }}>
+              CHOOSE YOUR BELT
+              <span style={{ marginLeft: 10, color: C.accentHi, fontFamily: "var(--font-latin)", fontWeight: 700 }}>·</span>
+              <span style={{ marginLeft: 10, color: "rgba(255,255,255,0.92)" }}>BEGIN TRAINING</span>
             </div>
           </div>
         </div>
@@ -1877,8 +1893,50 @@ export default function App() {
           })}
         </div>
 
-        <div style={{ marginTop: 24, padding: "14px 18px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, fontSize: 13, color: C.muted, lineHeight: 1.55 }}>
-          <strong style={{ color: C.ink }}>How it works</strong> — each lesson teaches 5 mixed grammar + vocabulary items. Study the cards, then take a 5-question quiz. Pass to unlock the next lesson and earn XP. Every 5 lessons forms a chapter.
+        {/* HOW IT WORKS — 3-step illustrated guide */}
+        <div style={{ marginTop: 28, position: "relative" }}>
+          <div className="en-impact" style={{ fontSize: 11, color: C.accent, letterSpacing: "0.30em", marginBottom: 4, textAlign: "center" }}>
+            HOW IT WORKS
+          </div>
+          <div className="jp-brush" style={{ fontSize: 22, color: C.ink, fontWeight: 700, textAlign: "center", marginBottom: 18, letterSpacing: "0.12em" }}>
+            学びの三段
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: wide ? "1fr 1fr 1fr" : "1fr", gap: 12 }}>
+            {[
+              { num: "01", icon: "📖", titleEn: "Study", titleJp: "学ぶ", body: "Daruma-sensei walks you through 5 mixed grammar + vocab cards. Rate each Know / Don't Know.", color: C.kanji, bg: "rgba(124,58,237,0.06)", border: "rgba(124,58,237,0.25)" },
+              { num: "02", icon: "⚔️", titleEn: "Practice", titleJp: "稽古", body: "Five-question quiz drills the items you just learned. The ones you marked Don't Know come first.", color: C.accent, bg: "rgba(188,0,45,0.06)", border: "rgba(188,0,45,0.25)" },
+              { num: "03", icon: "🥋", titleEn: "Master", titleJp: "極める", body: "Pass the quiz to earn XP and unlock the next lesson. Every 5 lessons forms a chapter on your path.", color: C.pass, bg: "rgba(15,143,71,0.06)", border: "rgba(15,143,71,0.30)" },
+            ].map((step, i) => (
+              <div key={i} style={{
+                background: step.bg, border: `1px solid ${step.border}`, borderRadius: 14,
+                padding: "16px 16px", position: "relative", overflow: "hidden",
+              }}>
+                <div className="en-impact" style={{
+                  position: "absolute", top: -4, right: 8,
+                  fontSize: 56, color: step.color, opacity: 0.10, lineHeight: 1, fontWeight: 900,
+                }}>{step.num}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: step.color, color: "#FFF",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18, fontWeight: 700,
+                  }}>{step.icon}</div>
+                  <div>
+                    <div className="en-impact" style={{ fontSize: 13, color: step.color, letterSpacing: "0.18em" }}>
+                      {step.titleEn}
+                    </div>
+                    <div className="jp-brush" style={{ fontSize: 14, color: C.ink, fontWeight: 700, lineHeight: 1, marginTop: 2 }}>
+                      {step.titleJp}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: C.inkDim, lineHeight: 1.55, fontWeight: 500 }}>
+                  {step.body}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

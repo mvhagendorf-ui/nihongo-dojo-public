@@ -55,6 +55,12 @@ button { font-family: inherit; color: inherit; }
 
 .jp { font-family: var(--font-jp); }
 .jp-display { font-family: var(--font-jp-display); letter-spacing: 0.05em; }
+/* Brush-stroke calligraphy — for atmospheric dōjō titles only */
+.jp-brush { font-family: 'Yuji Mai', 'Noto Serif JP', serif; letter-spacing: 0.04em; }
+/* Heavy classical Japanese — for big hero kanji */
+.jp-hero  { font-family: 'Shippori Mincho', 'Noto Serif JP', serif; font-weight: 800; letter-spacing: 0.05em; }
+/* Bold English display — for impact kickers ("BEGIN TRAINING", "DOJO") */
+.en-impact { font-family: 'Archivo Black', 'Inter', sans-serif; letter-spacing: 0.06em; }
 .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 400; }
 .heb { font-family: var(--font-heb); direction: rtl; text-align: right; unicode-bidi: plaintext; }
 .kicker { font-family: var(--font-latin); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
