@@ -1113,11 +1113,190 @@ function GlossaryItem({ item, mistakes, bookmarked, onToggle, onToggleBookmark, 
   );
 }
 
-function Glossary({ srs, bookmarks, onToggleBookmark, onBack }) {
+// ─────────── KANA REFERENCE ───────────
+// Standard 46-char gojūon, dakuten/handakuten variants, and yōon combinations.
+// Romaji uses Hepburn romanization. Empty cells render as blanks.
+const KANA_DATA = {
+  hiragana: {
+    gojuon: [
+      [{k:"あ",r:"a"},  {k:"い",r:"i"},  {k:"う",r:"u"},   {k:"え",r:"e"},  {k:"お",r:"o"}],
+      [{k:"か",r:"ka"}, {k:"き",r:"ki"}, {k:"く",r:"ku"},  {k:"け",r:"ke"}, {k:"こ",r:"ko"}],
+      [{k:"さ",r:"sa"}, {k:"し",r:"shi"},{k:"す",r:"su"},  {k:"せ",r:"se"}, {k:"そ",r:"so"}],
+      [{k:"た",r:"ta"}, {k:"ち",r:"chi"},{k:"つ",r:"tsu"}, {k:"て",r:"te"}, {k:"と",r:"to"}],
+      [{k:"な",r:"na"}, {k:"に",r:"ni"}, {k:"ぬ",r:"nu"},  {k:"ね",r:"ne"}, {k:"の",r:"no"}],
+      [{k:"は",r:"ha"}, {k:"ひ",r:"hi"}, {k:"ふ",r:"fu"},  {k:"へ",r:"he"}, {k:"ほ",r:"ho"}],
+      [{k:"ま",r:"ma"}, {k:"み",r:"mi"}, {k:"む",r:"mu"},  {k:"め",r:"me"}, {k:"も",r:"mo"}],
+      [{k:"や",r:"ya"}, null,             {k:"ゆ",r:"yu"},  null,             {k:"よ",r:"yo"}],
+      [{k:"ら",r:"ra"}, {k:"り",r:"ri"}, {k:"る",r:"ru"},  {k:"れ",r:"re"}, {k:"ろ",r:"ro"}],
+      [{k:"わ",r:"wa"}, null,             null,             null,             {k:"を",r:"wo"}],
+      [{k:"ん",r:"n"},  null,             null,             null,             null],
+    ],
+    dakuten: [
+      [{k:"が",r:"ga"}, {k:"ぎ",r:"gi"}, {k:"ぐ",r:"gu"}, {k:"げ",r:"ge"}, {k:"ご",r:"go"}],
+      [{k:"ざ",r:"za"}, {k:"じ",r:"ji"}, {k:"ず",r:"zu"}, {k:"ぜ",r:"ze"}, {k:"ぞ",r:"zo"}],
+      [{k:"だ",r:"da"}, {k:"ぢ",r:"ji"}, {k:"づ",r:"zu"}, {k:"で",r:"de"}, {k:"ど",r:"do"}],
+      [{k:"ば",r:"ba"}, {k:"び",r:"bi"}, {k:"ぶ",r:"bu"}, {k:"べ",r:"be"}, {k:"ぼ",r:"bo"}],
+      [{k:"ぱ",r:"pa"}, {k:"ぴ",r:"pi"}, {k:"ぷ",r:"pu"}, {k:"ぺ",r:"pe"}, {k:"ぽ",r:"po"}],
+    ],
+    youon: [
+      [{k:"きゃ",r:"kya"},{k:"きゅ",r:"kyu"},{k:"きょ",r:"kyo"}],
+      [{k:"しゃ",r:"sha"},{k:"しゅ",r:"shu"},{k:"しょ",r:"sho"}],
+      [{k:"ちゃ",r:"cha"},{k:"ちゅ",r:"chu"},{k:"ちょ",r:"cho"}],
+      [{k:"にゃ",r:"nya"},{k:"にゅ",r:"nyu"},{k:"にょ",r:"nyo"}],
+      [{k:"ひゃ",r:"hya"},{k:"ひゅ",r:"hyu"},{k:"ひょ",r:"hyo"}],
+      [{k:"みゃ",r:"mya"},{k:"みゅ",r:"myu"},{k:"みょ",r:"myo"}],
+      [{k:"りゃ",r:"rya"},{k:"りゅ",r:"ryu"},{k:"りょ",r:"ryo"}],
+      [{k:"ぎゃ",r:"gya"},{k:"ぎゅ",r:"gyu"},{k:"ぎょ",r:"gyo"}],
+      [{k:"じゃ",r:"ja"}, {k:"じゅ",r:"ju"}, {k:"じょ",r:"jo"}],
+      [{k:"びゃ",r:"bya"},{k:"びゅ",r:"byu"},{k:"びょ",r:"byo"}],
+      [{k:"ぴゃ",r:"pya"},{k:"ぴゅ",r:"pyu"},{k:"ぴょ",r:"pyo"}],
+    ],
+  },
+  katakana: {
+    gojuon: [
+      [{k:"ア",r:"a"},  {k:"イ",r:"i"},  {k:"ウ",r:"u"},   {k:"エ",r:"e"},  {k:"オ",r:"o"}],
+      [{k:"カ",r:"ka"}, {k:"キ",r:"ki"}, {k:"ク",r:"ku"},  {k:"ケ",r:"ke"}, {k:"コ",r:"ko"}],
+      [{k:"サ",r:"sa"}, {k:"シ",r:"shi"},{k:"ス",r:"su"},  {k:"セ",r:"se"}, {k:"ソ",r:"so"}],
+      [{k:"タ",r:"ta"}, {k:"チ",r:"chi"},{k:"ツ",r:"tsu"}, {k:"テ",r:"te"}, {k:"ト",r:"to"}],
+      [{k:"ナ",r:"na"}, {k:"ニ",r:"ni"}, {k:"ヌ",r:"nu"},  {k:"ネ",r:"ne"}, {k:"ノ",r:"no"}],
+      [{k:"ハ",r:"ha"}, {k:"ヒ",r:"hi"}, {k:"フ",r:"fu"},  {k:"ヘ",r:"he"}, {k:"ホ",r:"ho"}],
+      [{k:"マ",r:"ma"}, {k:"ミ",r:"mi"}, {k:"ム",r:"mu"},  {k:"メ",r:"me"}, {k:"モ",r:"mo"}],
+      [{k:"ヤ",r:"ya"}, null,             {k:"ユ",r:"yu"},  null,             {k:"ヨ",r:"yo"}],
+      [{k:"ラ",r:"ra"}, {k:"リ",r:"ri"}, {k:"ル",r:"ru"},  {k:"レ",r:"re"}, {k:"ロ",r:"ro"}],
+      [{k:"ワ",r:"wa"}, null,             null,             null,             {k:"ヲ",r:"wo"}],
+      [{k:"ン",r:"n"},  null,             null,             null,             null],
+    ],
+    dakuten: [
+      [{k:"ガ",r:"ga"}, {k:"ギ",r:"gi"}, {k:"グ",r:"gu"}, {k:"ゲ",r:"ge"}, {k:"ゴ",r:"go"}],
+      [{k:"ザ",r:"za"}, {k:"ジ",r:"ji"}, {k:"ズ",r:"zu"}, {k:"ゼ",r:"ze"}, {k:"ゾ",r:"zo"}],
+      [{k:"ダ",r:"da"}, {k:"ヂ",r:"ji"}, {k:"ヅ",r:"zu"}, {k:"デ",r:"de"}, {k:"ド",r:"do"}],
+      [{k:"バ",r:"ba"}, {k:"ビ",r:"bi"}, {k:"ブ",r:"bu"}, {k:"ベ",r:"be"}, {k:"ボ",r:"bo"}],
+      [{k:"パ",r:"pa"}, {k:"ピ",r:"pi"}, {k:"プ",r:"pu"}, {k:"ペ",r:"pe"}, {k:"ポ",r:"po"}],
+    ],
+    youon: [
+      [{k:"キャ",r:"kya"},{k:"キュ",r:"kyu"},{k:"キョ",r:"kyo"}],
+      [{k:"シャ",r:"sha"},{k:"シュ",r:"shu"},{k:"ショ",r:"sho"}],
+      [{k:"チャ",r:"cha"},{k:"チュ",r:"chu"},{k:"チョ",r:"cho"}],
+      [{k:"ニャ",r:"nya"},{k:"ニュ",r:"nyu"},{k:"ニョ",r:"nyo"}],
+      [{k:"ヒャ",r:"hya"},{k:"ヒュ",r:"hyu"},{k:"ヒョ",r:"hyo"}],
+      [{k:"ミャ",r:"mya"},{k:"ミュ",r:"myu"},{k:"ミョ",r:"myo"}],
+      [{k:"リャ",r:"rya"},{k:"リュ",r:"ryu"},{k:"リョ",r:"ryo"}],
+      [{k:"ギャ",r:"gya"},{k:"ギュ",r:"gyu"},{k:"ギョ",r:"gyo"}],
+      [{k:"ジャ",r:"ja"}, {k:"ジュ",r:"ju"}, {k:"ジョ",r:"jo"}],
+      [{k:"ビャ",r:"bya"},{k:"ビュ",r:"byu"},{k:"ビョ",r:"byo"}],
+      [{k:"ピャ",r:"pya"},{k:"ピュ",r:"pyu"},{k:"ピョ",r:"pyo"}],
+    ],
+  },
+};
+
+function KanaCell({ cell, onClick }) {
+  if (!cell) {
+    return <div style={{ aspectRatio: "1", background: "transparent" }} aria-hidden="true" />;
+  }
+  return (
+    <button
+      onClick={() => onClick(cell.k)}
+      className="btn-hover"
+      style={{
+        aspectRatio: "1",
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+        padding: 4, cursor: "pointer",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        fontFamily: FONT_LATIN,
+      }}
+    >
+      <span className="jp-display" style={{ fontSize: "min(7vw, 28px)", lineHeight: 1, color: C.ink, fontWeight: 500 }}>{cell.k}</span>
+      <span className="num" style={{ fontSize: 10, color: C.muted, marginTop: 4, letterSpacing: "0.04em" }}>{cell.r}</span>
+    </button>
+  );
+}
+
+function KanaSection({ title, en, rows, cols, onCellClick }) {
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
+        <span className="jp" style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{title}</span>
+        <span style={{ ...KICKER, fontSize: 10, color: C.muted }}>{en}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+        {rows.flatMap((row, ri) => row.map((cell, ci) => (
+          <KanaCell key={`${ri}-${ci}`} cell={cell} onClick={onCellClick} />
+        )))}
+      </div>
+    </div>
+  );
+}
+
+function KanaReference({ onBack }) {
+  const [variant, setVariant] = useState("hiragana");
+  const data = KANA_DATA[variant];
+
+  const playKana = (k) => {
+    try { speak(k); } catch {}
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <button onClick={onBack} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <IconArrowL size={12} /> Menu
+        </button>
+        <div style={{ ...KICKER, color: C.muted }}>仮名 · Kana</div>
+        <div style={{ width: 70 }} />
+      </div>
+
+      {/* Hero strip */}
+      <div style={{
+        background: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentHi} 100%)`,
+        color: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16,
+        boxShadow: "0 6px 20px -10px rgba(188,0,45,0.45)",
+      }}>
+        <div style={{ ...KICKER, fontSize: 10, color: "rgba(255,255,255,0.78)", marginBottom: 4 }}>仮名 · KANA</div>
+        <div className="jp-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: "0.04em" }}>The Japanese syllabary</div>
+        <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>Tap any character to hear it · 押して発音を聞く</div>
+      </div>
+
+      {/* Variant toggle */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+        {[
+          { id: "hiragana", jp: "ひらがな", en: "HIRAGANA", desc: "Native Japanese words" },
+          { id: "katakana", jp: "カタカナ", en: "KATAKANA", desc: "Foreign loanwords" },
+        ].map(v => {
+          const active = variant === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => setVariant(v.id)}
+              className="btn-hover"
+              style={{
+                flex: 1, padding: "12px 14px",
+                background: active ? C.surface : "transparent",
+                border: `2px solid ${active ? C.accent : C.border}`,
+                borderRadius: 12, cursor: "pointer", fontFamily: FONT_LATIN, textAlign: "left",
+                boxShadow: active ? `0 4px 14px -6px ${C.accentLine}` : "none",
+              }}
+            >
+              <div className="jp-display" style={{ fontSize: 18, fontWeight: 600, color: active ? C.ink : C.inkDim, lineHeight: 1.2 }}>{v.jp}</div>
+              <div style={{ ...KICKER, fontSize: 9, color: active ? C.accent : C.faint, marginTop: 4 }}>{v.en}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4, lineHeight: 1.3 }}>{v.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <KanaSection title="五十音" en="Gojūon · base 46"           rows={data.gojuon}  cols={5} onCellClick={playKana} />
+      <KanaSection title="濁音 · 半濁音" en="Dakuten · voiced"      rows={data.dakuten} cols={5} onCellClick={playKana} />
+      <KanaSection title="拗音" en="Yōon · combined"               rows={data.youon}   cols={3} onCellClick={playKana} />
+    </div>
+  );
+}
+
+function Glossary({ srs, bookmarks, onToggleBookmark, onBack, defaultKanjiOnly }) {
   const [search, setSearch] = useState("");
   const [openCats, setOpenCats] = useState(() => new Set());
   const [openItems, setOpenItems] = useState(() => new Set());
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
+  const [kanjiOnly, setKanjiOnly] = useState(!!defaultKanjiOnly);
   const ORDERED_CATS = CATEGORY_GROUPS.flatMap(g => g.cats);
 
   const stats = ALL_DATA.reduce((acc, item) => {
@@ -1132,9 +1311,17 @@ function Glossary({ srs, bookmarks, onToggleBookmark, onBack }) {
 
   const matchesSearch = (item) => {
     if (bookmarkedOnly && !bookmarks.has(item.jp)) return false;
+    if (kanjiOnly) {
+      // Show only items containing at least one kanji character
+      const jp = item.jp || "";
+      let hasKanji = false;
+      for (const ch of jp) { if (isKanjiChar(ch)) { hasKanji = true; break; } }
+      if (!hasKanji) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return (item.jp || "").toLowerCase().includes(q)
+      || (item.reading || "").toLowerCase().includes(q)
       || (item.en || "").toLowerCase().includes(q)
       || (item.kanjiStory || "").toLowerCase().includes(q)
       || (item.oneLiner || "").toLowerCase().includes(q)
@@ -1193,22 +1380,30 @@ function Glossary({ srs, bookmarks, onToggleBookmark, onBack }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        <button onClick={() => setBookmarkedOnly(false)} className="btn-hover" style={{
-          flex: 1, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
-          background: !bookmarkedOnly ? C.accentSoft : "transparent",
-          color: !bookmarkedOnly ? C.accent : C.muted,
-          border: `1px solid ${!bookmarkedOnly ? C.accentLine : C.border}`,
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+        <button onClick={() => { setBookmarkedOnly(false); setKanjiOnly(false); }} className="btn-hover" style={{
+          flex: 1, minWidth: 80, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+          background: (!bookmarkedOnly && !kanjiOnly) ? C.accentSoft : "transparent",
+          color: (!bookmarkedOnly && !kanjiOnly) ? C.accent : C.muted,
+          border: `1px solid ${(!bookmarkedOnly && !kanjiOnly) ? C.accentLine : C.border}`,
           borderRadius: 8, cursor: "pointer", fontFamily: FONT_LATIN,
         }}>All</button>
-        <button onClick={() => setBookmarkedOnly(true)} className="btn-hover" style={{
-          flex: 1, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+        <button onClick={() => setKanjiOnly(k => !k)} className="btn-hover" style={{
+          flex: 1, minWidth: 80, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+          background: kanjiOnly ? C.accentSoft : "transparent",
+          color: kanjiOnly ? C.accent : C.muted,
+          border: `1px solid ${kanjiOnly ? C.accentLine : C.border}`,
+          borderRadius: 8, cursor: "pointer", fontFamily: FONT_LATIN,
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+        }}><span className="jp" style={{ fontSize: 13, lineHeight: 1 }}>漢字</span> Kanji</button>
+        <button onClick={() => setBookmarkedOnly(b => !b)} className="btn-hover" style={{
+          flex: 1, minWidth: 80, padding: "8px 12px", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
           background: bookmarkedOnly ? C.accentSoft : "transparent",
           color: bookmarkedOnly ? C.accent : C.muted,
           border: `1px solid ${bookmarkedOnly ? C.accentLine : C.border}`,
           borderRadius: 8, cursor: "pointer", fontFamily: FONT_LATIN,
           display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-        }}><IconStar size={12} filled={bookmarkedOnly} /> Bookmarked</button>
+        }}><IconStar size={12} filled={bookmarkedOnly} /> Saved</button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1924,6 +2119,22 @@ export default function App() {
     );
   }
 
+  if (screen === "kanji-search") {
+    return (
+      <div style={PAGE}>
+        <Glossary srs={srs} bookmarks={bookmarks} onToggleBookmark={toggleBookmark} onBack={() => setScreen("menu")} defaultKanjiOnly={true} />
+      </div>
+    );
+  }
+
+  if (screen === "kana-reference") {
+    return (
+      <div style={PAGE}>
+        <KanaReference onBack={() => setScreen("menu")} />
+      </div>
+    );
+  }
+
   // ═════════ LEARN — LEVEL SELECT (Belt cards) ═════════
   if (screen === "learn-levels") {
     return (
@@ -2447,6 +2658,47 @@ export default function App() {
     const avg = history.length > 0 ? Math.round(history.reduce((s, h) => s + (h.score / h.total) * 100, 0) / history.length) : 0;
     const masteredCount = ALL_DATA.filter(i => srs[i.jp]?.right > 0 && (srs[i.jp]?.wrong || 0) === 0).length;
     const mistakenCount = ALL_DATA.filter(i => (srs[i.jp]?.wrong || 0) > 0).length;
+
+    // Two side-by-side reference cards: Kana table + Kanji search — placed for beginners
+    const referencePairCard = (
+      <div style={{ display: "flex", gap: 10, marginTop: wide ? 12 : 12 }}>
+        <button onClick={() => setScreen("kana-reference")} className="btn-hover" style={{
+          flex: 1, padding: "14px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
+          cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 6,
+          fontFamily: FONT_LATIN,
+          boxShadow: "0 1px 2px rgba(80,60,30,0.04), 0 8px 28px -10px rgba(80,60,30,0.10)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ ...KICKER, color: C.accent, fontSize: 10 }}>仮名 · KANA</span>
+            <IconChevRt size={12} style={{ color: C.faint }} />
+          </div>
+          <div className="jp-display" style={{ fontSize: 22, color: C.ink, fontWeight: 600, lineHeight: 1, letterSpacing: "0.04em" }}>
+            あ ア
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+            Hiragana &amp; Katakana tables — tap to hear
+          </div>
+        </button>
+        <button onClick={() => setScreen("kanji-search")} className="btn-hover" style={{
+          flex: 1, padding: "14px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
+          cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 6,
+          fontFamily: FONT_LATIN,
+          boxShadow: "0 1px 2px rgba(80,60,30,0.04), 0 8px 28px -10px rgba(80,60,30,0.10)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ ...KICKER, color: C.accent, fontSize: 10 }}>漢字 · KANJI</span>
+            <IconChevRt size={12} style={{ color: C.faint }} />
+          </div>
+          <div className="jp-display" style={{ fontSize: 22, color: C.ink, fontWeight: 600, lineHeight: 1, letterSpacing: "0.04em" }}>
+            検索
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+            Search by kanji, reading, or meaning
+          </div>
+        </button>
+      </div>
+    );
+
     const indexCard = (
       <button onClick={() => setScreen("glossary")} className="btn-hover" style={{
         width: "100%", padding: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
@@ -2720,6 +2972,7 @@ export default function App() {
             </div>
           </Card>
           {wide && indexCard}
+          {wide && referencePairCard}
           </div>
 
           {/* CONFIGURE + START */}
@@ -2783,6 +3036,7 @@ export default function App() {
               Start Test
             </button>
             {!wide && indexCard}
+            {!wide && referencePairCard}
           </div>
         </div>
 
