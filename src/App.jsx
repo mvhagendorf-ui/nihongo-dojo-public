@@ -40,12 +40,14 @@ const JP_LABEL = { fontFamily: FONT_JP, fontSize: 14, fontWeight: 700, color: C.
 // groups of 5 mixed grammar+vocab items per level.
 const LESSON_SIZE = 5;
 
+// Same illustration (judo_boy), 5 belt color variants — visual progression as
+// you climb the ranks. Recolored programmatically via scripts/recolor-belts.js.
 const LEVELS = [
-  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)",   character: "/dojo/judo_boy.png",                  characterEn: "Judo student" },
-  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)", character: "/dojo/judo_girl.png",                 characterEn: "Judo student" },
-  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)", character: "/dojo/karate.png",                    characterEn: "Karate practitioner" },
-  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)", character: "/dojo/kenjutsu_shinsengumi_man.png",  characterEn: "Kenjutsu master" },
-  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)", character: "/dojo/samurai.png",                   characterEn: "Samurai" },
+  { id: "N5", belt: "白帯", beltEn: "White Belt",  rank: "初級 · Beginner",       beltColor: "#FFFFFF", beltStripe: "#1F2937", textOn: "#1F2937", glow: "rgba(0,0,0,0.06)",   character: "/dojo/judo_boy_white.png",  characterEn: "White-belt student" },
+  { id: "N4", belt: "黄帯", beltEn: "Yellow Belt", rank: "初級II · Upper Beginner",beltColor: "#FCD34D", beltStripe: "#92400E", textOn: "#5B3A0A", glow: "rgba(252,211,77,0.40)", character: "/dojo/judo_boy_yellow.png", characterEn: "Yellow-belt student" },
+  { id: "N3", belt: "緑帯", beltEn: "Green Belt",  rank: "中級 · Intermediate",    beltColor: "#10B981", beltStripe: "#064E3B", textOn: "#FFFFFF", glow: "rgba(16,185,129,0.40)", character: "/dojo/judo_boy_green.png",  characterEn: "Green-belt student" },
+  { id: "N2", belt: "茶帯", beltEn: "Brown Belt",  rank: "上級 · Advanced",        beltColor: "#92400E", beltStripe: "#451A03", textOn: "#FFFFFF", glow: "rgba(146,64,14,0.45)", character: "/dojo/judo_boy_brown.png",  characterEn: "Brown-belt student" },
+  { id: "N1", belt: "黒帯", beltEn: "Black Belt",  rank: "上級II · Master",        beltColor: "#1F2937", beltStripe: "#BC002D", textOn: "#FFFFFF", glow: "rgba(31,41,55,0.50)", character: "/dojo/judo_boy_black.png",  characterEn: "Black-belt master" },
 ];
 
 const LEVEL_CATEGORIES = {
