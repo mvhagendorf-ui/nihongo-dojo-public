@@ -2711,12 +2711,14 @@ export default function App() {
   // ═════════ LEARN — LEVEL SELECT (Belt cards) ═════════
   if (screen === "learn-levels") {
     return (
-      <div style={PAGE}>
+      <div className="aurora-root" style={{ ...PAGE, color: "var(--ink)", overflow: "hidden", minHeight: "100dvh" }}>
+        {!light && <AuroraBackdrop />}
+        <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button onClick={() => { learnContextRef.current = null; setLearnLevel(null); setLearnLesson(null); setScreen("menu"); }} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => { learnContextRef.current = null; setLearnLevel(null); setLearnLesson(null); setScreen("menu"); }} className="btn-hover" style={{ background: "transparent", border: "1px solid var(--hairline-strong)", color: "var(--muted)", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconArrowL size={12} /> Menu
           </button>
-          <div style={{ ...KICKER, color: C.muted }}>道場 · Dojo</div>
+          <div style={{ ...KICKER, color: "var(--muted)", padding: "5px 14px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 100 }}>道場 · DOJO</div>
           <div style={{ width: 70 }} />
         </div>
 
@@ -2848,25 +2850,25 @@ export default function App() {
 
         {/* HOW IT WORKS — 3-step illustrated guide */}
         <div style={{ marginTop: 28, position: "relative" }}>
-          <div className="en-impact" style={{ fontSize: 11, color: C.accent, letterSpacing: "0.30em", marginBottom: 4, textAlign: "center" }}>
+          <div className="en-impact" style={{ fontSize: 11, color: "var(--accent-strong)", letterSpacing: "0.30em", marginBottom: 4, textAlign: "center" }}>
             HOW IT WORKS
           </div>
-          <div className="jp-brush" style={{ fontSize: 22, color: C.ink, fontWeight: 700, textAlign: "center", marginBottom: 18, letterSpacing: "0.12em" }}>
+          <div className="jp-brush" style={{ fontSize: 22, color: "var(--ink)", fontWeight: 700, textAlign: "center", marginBottom: 18, letterSpacing: "0.12em" }}>
             学びの三段
           </div>
           <div style={{ display: "grid", gridTemplateColumns: wide ? "1fr 1fr 1fr" : "1fr", gap: 12 }}>
             {[
-              { num: "01", icon: "📖", titleEn: "Study", titleJp: "学ぶ", body: "Daruma-sensei walks you through 5 mixed grammar + vocab cards. Rate each Know / Don't Know.", color: C.kanji, bg: "rgba(124,58,237,0.06)", border: "rgba(124,58,237,0.25)" },
-              { num: "02", icon: "⚔️", titleEn: "Practice", titleJp: "稽古", body: "Five-question quiz drills the items you just learned. The ones you marked Don't Know come first.", color: C.accent, bg: "rgba(188,0,45,0.06)", border: "rgba(188,0,45,0.25)" },
-              { num: "03", icon: "🥋", titleEn: "Master", titleJp: "極める", body: "Pass the quiz to earn XP and unlock the next lesson. Every 5 lessons forms a chapter on your path.", color: C.pass, bg: "rgba(15,143,71,0.06)", border: "rgba(15,143,71,0.30)" },
+              { num: "01", icon: "📖", titleEn: "Study", titleJp: "学ぶ", body: "Daruma-sensei walks you through 5 mixed grammar + vocab cards. Rate each Know / Don't Know.", color: "var(--kanji-tint)", bg: "rgba(124,58,237,0.10)", border: "rgba(124,58,237,0.30)" },
+              { num: "02", icon: "⚔️", titleEn: "Practice", titleJp: "稽古", body: "Five-question quiz drills the items you just learned. The ones you marked Don't Know come first.", color: "var(--accent-strong)", bg: "rgba(188,0,45,0.10)", border: "rgba(188,0,45,0.30)" },
+              { num: "03", icon: "🥋", titleEn: "Master", titleJp: "極める", body: "Pass the quiz to earn XP and unlock the next lesson. Every 5 lessons forms a chapter on your path.", color: "var(--pass)", bg: "rgba(15,143,71,0.10)", border: "rgba(15,143,71,0.30)" },
             ].map((step, i) => (
-              <div key={i} style={{
-                background: step.bg, border: `1px solid ${step.border}`, borderRadius: 14,
-                padding: "16px 16px", position: "relative", overflow: "hidden",
+              <div key={i} className="glass" style={{
+                borderRadius: 14, padding: "16px 16px", position: "relative", overflow: "hidden",
+                borderLeft: `3px solid ${step.color}`,
               }}>
                 <div className="en-impact" style={{
                   position: "absolute", top: -4, right: 8,
-                  fontSize: 56, color: step.color, opacity: 0.10, lineHeight: 1, fontWeight: 900,
+                  fontSize: 56, color: step.color, opacity: 0.16, lineHeight: 1, fontWeight: 900,
                 }}>{step.num}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <div style={{
@@ -2879,17 +2881,18 @@ export default function App() {
                     <div className="en-impact" style={{ fontSize: 13, color: step.color, letterSpacing: "0.18em" }}>
                       {step.titleEn}
                     </div>
-                    <div className="jp-brush" style={{ fontSize: 14, color: C.ink, fontWeight: 700, lineHeight: 1, marginTop: 2 }}>
+                    <div className="jp-brush" style={{ fontSize: 14, color: "var(--ink)", fontWeight: 700, lineHeight: 1, marginTop: 2 }}>
                       {step.titleJp}
                     </div>
                   </div>
                 </div>
-                <div style={{ fontSize: 13, color: C.inkDim, lineHeight: 1.55, fontWeight: 500 }}>
+                <div style={{ fontSize: 13, color: "var(--ink-dim)", lineHeight: 1.55, fontWeight: 500 }}>
                   {step.body}
                 </div>
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     );
@@ -2904,12 +2907,14 @@ export default function App() {
     // Determine the next available lesson — first one not yet completed (Duolingo-style sequential unlock)
     const firstIncompleteIdx = lessons.findIndex(l => !completedSet.has(l.id));
     return (
-      <div style={PAGE}>
+      <div className="aurora-root" style={{ ...PAGE, color: "var(--ink)", overflow: "hidden", minHeight: "100dvh" }}>
+        {!light && <AuroraBackdrop />}
+        <div style={{ position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <button onClick={() => setScreen("learn-levels")} className="btn-hover" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => setScreen("learn-levels")} className="btn-hover" style={{ background: "transparent", border: "1px solid var(--hairline-strong)", color: "var(--muted)", fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", padding: "7px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconArrowL size={12} /> Levels
           </button>
-          <div style={{ ...KICKER, color: C.muted }}>{lvl ? <Furigana jp={lvl.belt} reading={lvl.beltReading} /> : null} · {lvl?.id}</div>
+          <div style={{ ...KICKER, color: "var(--muted)" }}>{lvl ? <Furigana jp={lvl.belt} reading={lvl.beltReading} /> : null} · {lvl?.id}</div>
           <div style={{ width: 70 }} />
         </div>
 
@@ -2990,9 +2995,9 @@ export default function App() {
               <div key={lesson.id}>
                 {showChapterDivider && (
                   <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 10px" }}>
-                    <div style={{ flex: 1, height: 1, background: C.border }} />
-                    <div style={{ ...KICKER, fontSize: 11, color: C.kanji, letterSpacing: "0.18em" }}>第{chapter}章 · Chapter {chapter}</div>
-                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                    <div style={{ flex: 1, height: 1, background: "var(--hairline-strong)" }} />
+                    <div style={{ ...KICKER, fontSize: 11, color: "var(--kanji-tint)", letterSpacing: "0.18em" }}>第{chapter}章 · Chapter {chapter}</div>
+                    <div style={{ flex: 1, height: 1, background: "var(--hairline-strong)" }} />
                   </div>
                 )}
                 <button
@@ -3030,6 +3035,7 @@ export default function App() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
     );
